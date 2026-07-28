@@ -33,6 +33,9 @@ set -a; [ -f $ETC/secrets.env ] && . $ETC/secrets.env; set +a
 exec $VENV/bin/python -m app "\$@"
 EOF
 chmod +x /usr/local/bin/tidal-radio
+# /usr/local/bin is not in the PATH that `pct enter` / `lxc-attach` provide,
+# so also expose the CLI from /usr/bin, which always is.
+ln -sf /usr/local/bin/tidal-radio /usr/bin/tidal-radio
 # make `python -m app` importable from the src dir
 echo "$SRC" > "$($VENV/bin/python -c 'import site;print(site.getsitepackages()[0])')/tidal-radio.pth"
 
