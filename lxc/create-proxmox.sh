@@ -217,11 +217,12 @@ msg_ok "Station configured"
 AUTH_DONE=0
 if WT "Link Tidal" --yesno "\nLink your Tidal account now?\n\nA link.tidal.com URL will be printed — open it on your\nphone or laptop and approve. The wizard waits for you." 13 62; then
   echo
-  if pct exec "$CTID" -- tidal-radio auth; then
+  # absolute path: lxc-attach's minimal PATH excludes /usr/local/bin
+  if pct exec "$CTID" -- /usr/local/bin/tidal-radio auth; then
     AUTH_DONE=1
     msg_ok "Tidal account linked"
     msg_info "Syncing your favorites"
-    pct exec "$CTID" -- tidal-radio sync >>"$LOG" 2>&1 || true
+    pct exec "$CTID" -- /usr/local/bin/tidal-radio sync >>"$LOG" 2>&1 || true
     msg_ok "Library synced"
   else
     msg_error "Tidal linking failed or was cancelled — run 'tidal-radio auth' later"

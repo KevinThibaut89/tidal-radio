@@ -79,6 +79,10 @@ cp "$SRC/lxc/systemd/tidal-radio.service" /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable icecast2 liquidsoap-radio tidal-radio >/dev/null
 
+echo "==> Verifying CLI"
+/usr/local/bin/tidal-radio --help >/dev/null || {
+  echo "ERROR: /usr/local/bin/tidal-radio is not runnable" >&2; exit 1; }
+
 cat <<'EOF'
 
 Provisioning complete.
