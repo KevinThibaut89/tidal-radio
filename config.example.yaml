@@ -1,0 +1,90 @@
+# tidal-radio configuration. Copied to /etc/tidal-radio/config.yaml by setup.sh.
+
+station:
+  name: "Kevin FM"
+  tagline: "All killer, no filler."
+  timezone: "Europe/Brussels"
+
+paths:
+  data: /var/lib/tidal-radio          # db, session, cache, breaks, voices
+
+tidal:
+  quality: LOSSLESS                   # LOW | HIGH | LOSSLESS (per your subscription)
+
+cache:
+  max_gb: 6                           # audio cache size; least-recently-played evicted
+
+analysis:
+  max_seconds: 120                    # analyze first N seconds (speed vs accuracy)
+  background: true                    # analyze unanalyzed tracks while running
+
+engine:
+  queue_ahead: 2                      # items kept queued in liquidsoap
+  bpm_walk: 12                        # max BPM jump between consecutive tracks
+  artist_separation: 6               # min tracks between same artist
+  track_cooldown_hours: 20            # min hours before a track repeats
+  harmonic_weight: 1.0                # Camelot-wheel compatibility weight
+  tempo_weight: 1.0
+  taste_weight: 0.8                   # favorites / play-history weight
+  randomness: 0.35                    # 0 = deterministic, 1 = chaotic
+
+dj:
+  enabled: true
+  every_n_tracks: 4                   # a talk break roughly every N tracks
+  news_minutes: [0]                   # do a news/weather break near these minutes of the hour
+  persona: >
+    A warm, dryly funny late-night radio host. Short sentences. Never cheesy,
+    never shouty. Loves the music and drops one small detail about a track or
+    artist when it's interesting.
+  llm:
+    model: claude-opus-5              # used when ANTHROPIC_API_KEY is set
+    max_tokens: 600
+
+weather:
+  latitude: 50.85                     # Brussels — set to your location
+  longitude: 4.35
+  units: celsius
+
+news:
+  feeds:
+    - https://feeds.bbci.co.uk/news/world/rss.xml
+    - https://www.vrt.be/vrtnws/en.rss.articles.xml
+  max_headlines: 3
+
+tts:                                  # Piper: local, offline TTS
+  piper:
+    voice: en_US-lessac-medium        # model file in <data>/voices/
+    length_scale: 1.05                # >1 = slightly slower, more "radio"
+
+api:
+  host: 0.0.0.0
+  port: 8080
+
+liquidsoap:
+  host: 127.0.0.1
+  port: 1234
+
+# ── Shows ────────────────────────────────────────────────────────────────────
+# Time-windowed thematic shows. Outside any window, the "freeform" defaults
+# apply. `tidal-radio shows generate` writes shows.generated.yaml next to this
+# file with clusters mined from your taste; both files are merged at load.
+shows:
+  - id: morning-drive
+    name: "The Morning Drive"
+    days: [mon, tue, wed, thu, fri]
+    start: "07:00"
+    end: "09:30"
+    bpm: [95, 135]
+    energy: rising                    # rising | falling | flat
+  - id: wind-down
+    name: "Late Night Wind-Down"
+    days: [mon, tue, wed, thu, fri, sat, sun]
+    start: "22:00"
+    end: "01:00"
+    bpm: [60, 100]
+    energy: falling
+
+freeform:
+  name: "Freeform"
+  bpm: [60, 160]
+  energy: flat

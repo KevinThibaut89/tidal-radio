@@ -1,0 +1,12 @@
+# Pinned: unofficial API — upgrades can break auth/stream paths, bump deliberately
+tidalapi==0.8.3
+librosa>=0.10
+soundfile>=0.12
+numpy>=1.26
+requests>=2.31
+PyYAML>=6.0
+feedparser>=6.0
+fastapi>=0.110
+uvicorn>=0.29
+anthropic>=0.40
+piper-tts>=1.2 ; platform_machine == "x86_64" or platform_machine == "aarch64"

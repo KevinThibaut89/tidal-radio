@@ -1,0 +1,16 @@
+[Unit]
+Description=Liquidsoap audio pipeline for tidal-radio
+After=network.target icecast2.service
+Wants=icecast2.service
+
+[Service]
+Type=simple
+User=radio
+Group=radio
+EnvironmentFile=/etc/tidal-radio/secrets.env
+ExecStart=/usr/bin/liquidsoap /opt/tidal-radio/src/liquidsoap/radio.liq
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

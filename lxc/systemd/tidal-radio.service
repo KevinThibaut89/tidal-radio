@@ -1,0 +1,18 @@
+[Unit]
+Description=tidal-radio brain (selection, DJ, control API)
+After=network-online.target liquidsoap-radio.service
+Wants=liquidsoap-radio.service
+
+[Service]
+Type=simple
+User=radio
+Group=radio
+EnvironmentFile=/etc/tidal-radio/secrets.env
+Environment=TIDAL_RADIO_CONFIG=/etc/tidal-radio/config.yaml
+WorkingDirectory=/opt/tidal-radio/src
+ExecStart=/opt/tidal-radio/venv/bin/python -m app run
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
