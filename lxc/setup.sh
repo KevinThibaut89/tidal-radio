@@ -39,7 +39,9 @@ echo "$SRC" > "$($VENV/bin/python -c 'import site;print(site.getsitepackages()[0
 echo "==> Config + secrets"
 [ -f "$ETC/config.yaml" ] || cp "$SRC/config.example.yaml" "$ETC/config.yaml"
 if [ ! -f "$ETC/secrets.env" ]; then
-  ICECAST_PASS=$(tr -dc 'a-zA-Z0-9' </dev/urandom | head -c 24)
+  # finite input so tr can't hit SIGPIPE under `set -o pipefail`
+  ICECAST_PASS=$(head -c 64 /dev/urandom | base64 | tr -dc 'a-zA-Z0-9' | head -c 24)
+  [ -n "$ICECAST_PASS" ] || { echo "password generation failed" >&2; exit 1; }
   cat > "$ETC/secrets.env" <<EOF
 # Sourced by the systemd services and the tidal-radio CLI.
 ICECAST_PASS=$ICECAST_PASS

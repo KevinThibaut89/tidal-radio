@@ -16,7 +16,7 @@ CL=$'\033[m'; BOLD=$'\033[1m'
 LOG=/tmp/tidal-radio-install.log
 : > "$LOG"
 
-msg_info()  { echo -ne " ${YW}⏳ ${1}...${CL}"; }
+msg_info()  { echo -ne "\r\033[K ${YW}⏳ ${1}...${CL}"; }
 msg_ok()    { echo -e "\r\033[K ${GN}✔${CL} ${1}"; }
 msg_error() { echo -e "\r\033[K ${RD}✖${CL} ${1}"; }
 
