@@ -67,7 +67,14 @@ class TidalClient:
         path.parent.mkdir(parents=True, exist_ok=True)
 
         if path.exists():
-            if self._try_restore():
+            # Reusing a valid session is right — unless PKCE was asked for and
+            # the stored one is a device link, which is exactly the upgrade the
+            # user is trying to perform.
+            reusable = self._try_restore()
+            if reusable and pkce and not getattr(self.session, "is_pkce", False):
+                log.info("Existing session is a device link — re-linking with PKCE")
+                reusable = False
+            if reusable:
                 log.info("Existing Tidal session is still valid")
                 return True
             backup = path.with_name(path.name + ".bak")
