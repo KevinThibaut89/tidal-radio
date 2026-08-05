@@ -30,6 +30,17 @@ class Engine:
 
         bpm_lo, bpm_hi = show.get("bpm", [0, 999])
 
+        # Blend in discoveries: a station that only replays the library is a
+        # shuffle. The ratio decides how often an unheard track gets the slot.
+        ratio = float(self.cfg.get("engine.discovery_ratio", 0.35))
+        discovered = [c for c in candidates
+                      if (c.get("origin") or "library") != "library"]
+        owned = [c for c in candidates if (c.get("origin") or "library") == "library"]
+        if discovered and owned:
+            candidates = discovered if random.random() < ratio else owned
+        elif discovered:
+            candidates = discovered
+
         pool = []
         for c in candidates:
             last = self.db.last_played_at(c["id"])

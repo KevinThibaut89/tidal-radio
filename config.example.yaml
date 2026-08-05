@@ -21,6 +21,20 @@ sync:
   playlists: true                     # import tracks from your playlists
   albums: true                        # ...and from favourited albums
 
+discovery:
+  enabled: true                       # keep finding music outside your library
+  ratio_note: "how often discoveries play is engine.discovery_ratio"
+  refresh_hours: 12                   # how often to look for more
+  min_tracks: 150                     # top up whenever the pool is below this
+  max_new_per_run: 300
+  seeds: 6                            # how many of your artists/tracks to seed from
+  pause_seconds: 1.5                  # be gentle with the API playback depends on
+  ai_enabled: true                    # let a cheap model suggest lateral picks
+  ai_provider: auto                   # auto | anthropic | openai
+  ai_model_anthropic: claude-haiku-4-5
+  ai_model_openai: gpt-4.1-nano
+  ai_suggestions: 25                  # asked for per run
+
 cache:
   max_gb: 6                           # audio cache size; least-recently-played evicted
 

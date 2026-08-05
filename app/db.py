@@ -43,7 +43,8 @@ class Database:
         with self._lock:
             self._conn.executescript(SCHEMA)
             # additive migrations — safe to run against an existing database
-            for column, decl in (("cover_url", "TEXT"), ("source", "TEXT DEFAULT 'tidal'")):
+            for column, decl in (("cover_url", "TEXT"), ("source", "TEXT DEFAULT 'tidal'"),
+                                 ("origin", "TEXT DEFAULT 'library'")):
                 try:
                     self._conn.execute(f"ALTER TABLE tracks ADD COLUMN {column} {decl}")
                 except sqlite3.OperationalError:
@@ -63,19 +64,23 @@ class Database:
     # ── tracks ────────────────────────────────────────────────────────────
     def upsert_track(self, tid: int, title: str, artist: str, album: str | None,
                      duration: int | None, favorite: bool = True,
-                     cover_url: str | None = None, source: str = "tidal"):
+                     cover_url: str | None = None, source: str = "tidal",
+                     origin: str = "library"):
         self.execute(
             """INSERT INTO tracks (id, title, artist, album, duration, favorite,
-                                   added_at, cover_url, source)
-               VALUES (?,?,?,?,?,?,?,?,?)
+                                   added_at, cover_url, source, origin)
+               VALUES (?,?,?,?,?,?,?,?,?,?)
                ON CONFLICT(id) DO UPDATE SET
                  title=excluded.title, artist=excluded.artist,
                  album=excluded.album, duration=excluded.duration,
                  favorite=excluded.favorite,
                  cover_url=COALESCE(excluded.cover_url, tracks.cover_url),
-                 source=excluded.source""",
+                 source=excluded.source,
+                 -- a track that turns up in your library outranks a discovery
+                 origin=CASE WHEN excluded.origin='library' THEN 'library'
+                             ELSE tracks.origin END""",
             (tid, title, artist, album, duration, int(favorite), time.time(),
-             cover_url, source),
+             cover_url, source, origin),
         )
 
     def tracks_without_features(self, limit: int = 50) -> list[sqlite3.Row]:

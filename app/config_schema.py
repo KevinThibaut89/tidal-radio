@@ -16,6 +16,16 @@ ANTHROPIC_MODELS = [
     ("claude-haiku-4-5", "Claude Haiku 4.5 — fastest, cheapest"),
     ("claude-fable-5", "Claude Fable 5 — most capable, premium price"),
 ]
+# Small/cheap tiers — discovery only needs a list of names, not prose.
+ANTHROPIC_CHEAP = [
+    ("claude-haiku-4-5", "Claude Haiku 4.5 — cheapest"),
+    ("claude-sonnet-5", "Claude Sonnet 5 — broader knowledge"),
+]
+OPENAI_CHEAP = [
+    ("gpt-4.1-nano", "GPT-4.1 nano — cheapest"),
+    ("gpt-4o-mini", "GPT-4o mini"),
+    ("gpt-4.1-mini", "GPT-4.1 mini"),
+]
 OPENAI_MODELS = [
     ("gpt-4o-mini", "GPT-4o mini — fast and cheap"),
     ("gpt-4o", "GPT-4o — stronger writing"),
@@ -68,6 +78,33 @@ SCHEMA: list[dict] = [
         {"key": "engine.queue_ahead", "label": "Queue depth", "control": "number",
          "min": 1, "max": 10, "step": 1,
          "help": "How many items to keep queued ahead of the stream.", "live": True},
+    ]},
+    {"group": "Discovery", "icon": "🧭", "settings": [
+        {"key": "discovery.enabled", "label": "Find new music", "control": "toggle",
+         "help": "Keeps stocking the station with tracks outside your library.",
+         "live": True},
+        {"key": "engine.discovery_ratio", "label": "How much is new", "control": "slider",
+         "min": 0, "max": 1, "step": 0.05,
+         "help": "0 = only your library, 1 = only discoveries. 0.35 is a good radio feel.",
+         "live": True},
+        {"key": "discovery.ai_enabled", "label": "AI suggestions", "control": "toggle",
+         "help": "Ask a cheap model for lateral picks Tidal's own radios miss.",
+         "live": True},
+        {"key": "discovery.ai_provider", "label": "Suggested by", "control": "select",
+         "options": [("auto", "Auto — whichever key is set"), ("anthropic", "Claude"),
+                     ("openai", "OpenAI")], "live": True},
+        {"key": "discovery.ai_model_anthropic", "label": "Claude model (discovery)",
+         "control": "select", "options": ANTHROPIC_CHEAP, "allow_custom": True,
+         "help": "A small model is plenty — it's returning a list of names.", "live": True},
+        {"key": "discovery.ai_model_openai", "label": "OpenAI model (discovery)",
+         "control": "select", "options": OPENAI_CHEAP, "allow_custom": True,
+         "live": True},
+        {"key": "discovery.ai_suggestions", "label": "Suggestions per run",
+         "control": "number", "min": 5, "max": 100, "step": 5, "live": True},
+        {"key": "discovery.refresh_hours", "label": "Look for more every (hours)",
+         "control": "number", "min": 1, "max": 168, "step": 1, "live": True},
+        {"key": "discovery.min_tracks", "label": "Keep at least (tracks)",
+         "control": "number", "min": 0, "max": 5000, "step": 50, "live": True},
     ]},
     {"group": "AI DJ", "icon": "🎙", "settings": [
         {"key": "dj.enabled", "label": "DJ breaks", "control": "toggle", "live": True},

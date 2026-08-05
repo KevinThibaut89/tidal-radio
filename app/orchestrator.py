@@ -10,6 +10,7 @@ from zoneinfo import ZoneInfo
 from .analysis import analyze_file
 from .config import Config
 from .db import Database
+from .discover import Discovery
 from .dj import DJ
 from .engine import Engine
 from .liquidsoap_client import Liquidsoap
@@ -29,6 +30,7 @@ class Orchestrator:
         self.settings = SettingsStore(cfg.data_dir / "settings.json")
         cfg.bind_overrides(self.settings)   # UI edits win over config.yaml
         self.source = self._build_source()
+        self.discovery = Discovery(cfg, self.source, self.db, self.settings)
         # `tidal` stays as an alias so existing call sites and the API keep working
         # while only one source is active at a time.
         self.tidal = self.source
@@ -81,7 +83,11 @@ class Orchestrator:
             "quality": self.tidal.quality,
             "tidal_error": self.tidal.last_error,
             "throttled_for": round(self.tidal.throttled_for()),
-            "library_tracks": self.db.query("SELECT COUNT(*) AS c FROM tracks")[0]["c"],
+            "library_tracks": self.db.query(
+                "SELECT COUNT(*) AS c FROM tracks WHERE origin='library' OR origin IS NULL"
+            )[0]["c"],
+            "discovery_tracks": self.discovery.pool_size(),
+            "discovery_note": self.discovery.last_ai_note,
             "show": {"id": show.get("id"), "name": show.get("name")},
             "now_playing": self._now_playing(),
             "queue": [self._item_public(i) for i in self.pushed
@@ -134,6 +140,8 @@ class Orchestrator:
         if self.cfg.get("analysis.background", True):
             threading.Thread(target=self._analysis_worker, daemon=True,
                              name="analysis").start()
+        threading.Thread(target=self._discovery_worker, daemon=True,
+                         name="discovery").start()
 
         self.running = True
         queue_ahead = int(self.cfg.get("engine.queue_ahead", 2))
@@ -273,6 +281,17 @@ class Orchestrator:
         keys = ("kind", "title", "artist", "album", "bpm", "camelot", "script",
                 "cover_url", "duration")
         return {k: item.get(k) for k in keys if item.get(k) is not None}
+
+    def _discovery_worker(self):
+        """Keep the discovery pool stocked with music outside the library."""
+        time.sleep(45)          # let playback get established first
+        while True:
+            try:
+                if self.discovery.due():
+                    self.discovery.run()
+            except Exception:
+                log.exception("Discovery worker error")
+            time.sleep(600)
 
     # ── background analysis ──────────────────────────────────────────────
     def _analysis_worker(self):
