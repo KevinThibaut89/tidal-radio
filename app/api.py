@@ -182,7 +182,8 @@ async function refresh(){
        : '▶ <b>' + np.title + '</b> — ' + np.artist
          + (np.bpm ? ' <span class="dim">(' + np.bpm + ' bpm · ' + np.camelot + ')</span>' : ''))
     : '<span class="dim">' + (s.tidal_linked ? 'warming up…' : 'waiting for setup') + '</span>';
-  $('sub').textContent = s.show.name + (s.liquidsoap ? '' : ' · audio pipeline down');
+  $('sub').textContent = s.show.name + (s.quality ? ' · ' + s.quality : '')
+    + (s.liquidsoap ? '' : ' · audio pipeline down');
   $('recent').innerHTML = s.recent
     .map(r => '<li>' + r.title + ' <span class="dim">— ' + r.artist + '</span></li>').join('');
 }

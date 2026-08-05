@@ -49,6 +49,7 @@ class Orchestrator:
             "error": self.fatal_error,
             "tidal_linked": self.tidal.is_linked(),
             "dj_provider": self.dj.active_provider(),
+            "quality": self.tidal.quality,
             "library_tracks": self.db.query("SELECT COUNT(*) AS c FROM tracks")[0]["c"],
             "show": {"id": show.get("id"), "name": show.get("name")},
             "now_playing": self._now_playing(),

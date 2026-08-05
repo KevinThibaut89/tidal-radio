@@ -9,7 +9,10 @@ paths:
   data: /var/lib/tidal-radio          # db, session, cache, breaks, voices
 
 tidal:
-  quality: LOSSLESS                   # LOW | HIGH | LOSSLESS (per your subscription)
+  # HIGH works with the standard device-link login. LOSSLESS / HI_RES_LOSSLESS
+  # additionally require linking with `tidal-radio auth --pkce`; otherwise the
+  # station falls back automatically and logs the downgrade.
+  quality: HIGH                       # LOW | HIGH | LOSSLESS | HI_RES_LOSSLESS
 
 cache:
   max_gb: 6                           # audio cache size; least-recently-played evicted

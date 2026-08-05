@@ -16,7 +16,10 @@ def main():
     parser.add_argument("--config", help="path to config.yaml")
     sub = parser.add_subparsers(dest="cmd", required=True)
 
-    sub.add_parser("auth", help="link your Tidal account (device flow)")
+    p_auth = sub.add_parser("auth", help="link your Tidal account (device flow)")
+    p_auth.add_argument("--pkce", action="store_true",
+                        help="browser redirect login — required for LOSSLESS/HI_RES "
+                             "streaming (device-link tokens only allow up to HIGH)")
     sub.add_parser("sync", help="sync Tidal favorites into the local DB")
     p_an = sub.add_parser("analyze", help="analyze tempo/key of unanalyzed tracks")
     p_an.add_argument("--limit", type=int, default=25)
@@ -30,7 +33,7 @@ def main():
 
     if args.cmd == "auth":
         from .tidal_client import TidalClient
-        ok = TidalClient(cfg).login_interactive()
+        ok = TidalClient(cfg).login_interactive(pkce=args.pkce)
         sys.exit(0 if ok else 1)
 
     if args.cmd == "sync":

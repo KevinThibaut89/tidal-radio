@@ -17,24 +17,40 @@ log = logging.getLogger(__name__)
 class TidalClient:
     """Owns the Tidal session, library sync, and a bounded local audio cache."""
 
+    # Highest → lowest. A device-link (non-PKCE) token is only authorised for
+    # HIGH and below; asking for LOSSLESS with one yields 401 on the stream
+    # endpoints, so we walk down this ladder until something plays.
+    QUALITY_LADDER = ["HI_RES_LOSSLESS", "LOSSLESS", "HIGH", "LOW"]
+
     def __init__(self, cfg: Config):
         self.cfg = cfg
         self.session = tidalapi.Session()
         self._link: dict | None = None       # device-link state for the UI
         self._link_lock = threading.Lock()
-        quality = cfg.get("tidal.quality", "LOSSLESS").upper()
+        wanted = cfg.get("tidal.quality", "HIGH").upper()
+        if wanted not in self.QUALITY_LADDER:
+            wanted = "HIGH"
+        self.quality = wanted
+        self._apply_quality(wanted)
+
+    def _apply_quality(self, name: str) -> None:
         try:
             self.session.audio_quality = {
                 "LOW": tidalapi.Quality.low_96k,
                 "HIGH": tidalapi.Quality.low_320k,
                 "LOSSLESS": tidalapi.Quality.high_lossless,
-            }.get(quality, tidalapi.Quality.high_lossless)
-        except AttributeError:  # older tidalapi enum names
+                "HI_RES_LOSSLESS": tidalapi.Quality.hi_res_lossless,
+            }[name]
+        except (AttributeError, KeyError):   # older tidalapi enum names
             pass
 
     # ── auth ──────────────────────────────────────────────────────────────
-    def login_interactive(self) -> bool:
+    def login_interactive(self, pkce: bool = False) -> bool:
         """Device-link login; prints the link.tidal.com URL. Persists session.
+
+        `pkce=True` uses the browser redirect flow instead, which is the only
+        login that authorises LOSSLESS / HI_RES streaming. It asks you to paste
+        back the URL your browser lands on, so it needs a terminal.
 
         A stale session file must never block re-linking: tidalapi raises
         AuthenticationError from the token refresh while *loading* it, so the
@@ -56,7 +72,10 @@ class TidalClient:
                 path.unlink(missing_ok=True)
             self.session = tidalapi.Session()  # discard the poisoned state
 
-        self.session.login_oauth_simple(fn_print=print)  # prints link, blocks
+        if pkce:
+            self.session.login_pkce(fn_print=print)      # asks for pasted URL
+        else:
+            self.session.login_oauth_simple(fn_print=print)  # prints link, blocks
         if self._checked_login():
             self.session.save_session_to_file(path)
             user = getattr(self.session, "user", None)
@@ -183,8 +202,7 @@ class TidalClient:
             return out
         self.cfg.cache_dir.mkdir(parents=True, exist_ok=True)
         try:
-            track = self.session.track(track_id)
-            urls = self._stream_urls(track)
+            urls = self._stream_urls_with_fallback(track_id)
             if not urls:
                 return None
             with tempfile.NamedTemporaryFile(dir=self.cfg.cache_dir, suffix=".dl",
@@ -212,6 +230,29 @@ class TidalClient:
             log.error("Fetch failed for track %s: %s", track_id, e)
             return None
 
+    def _stream_urls_with_fallback(self, track_id: int) -> list[str]:
+        """Fetch stream URLs, stepping the quality down if the account/token
+        isn't authorised for the requested level (401 on the stream endpoints).
+
+        The working level is remembered, so the ladder is walked once — not on
+        every track.
+        """
+        start = self.QUALITY_LADDER.index(self.quality)
+        for name in self.QUALITY_LADDER[start:]:
+            if name != self.quality:
+                self._apply_quality(name)
+            urls = self._stream_urls(self.session.track(track_id))
+            if urls:
+                if name != self.quality:
+                    log.warning(
+                        "Stream quality reduced to %s — a device-link login is not "
+                        "authorised for %s. Re-link with `tidal-radio auth --pkce` "
+                        "for lossless.", name, self.quality)
+                    self.quality = name
+                return urls
+        self._apply_quality(self.quality)   # restore for the next attempt
+        return []
+
     def _stream_urls(self, track) -> list[str]:
         """Get playable URL(s) across tidalapi versions."""
         try:
@@ -226,7 +267,8 @@ class TidalClient:
         try:  # legacy API
             return [track.get_url()]
         except Exception as e:
-            log.error("No stream URL for track %s: %s", track.id, e)
+            # Not fatal on its own — the caller may retry at a lower quality.
+            log.debug("No stream URL for track %s at %s: %s", track.id, self.quality, e)
             return []
 
     def _evict_cache(self):

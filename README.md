@@ -75,6 +75,23 @@ If you skipped the Tidal step, finish later inside the container
 (`pct enter <CTID>`): `tidal-radio auth && tidal-radio sync`, then
 `systemctl start tidal-radio`.
 
+### Audio quality (and why lossless needs a different login)
+
+Tidal's device-link login — the convenient "open this URL and approve" flow —
+issues a token that is **only authorised to stream up to `HIGH` (320 kbps)**.
+Requesting `LOSSLESS` with it makes the stream endpoints return `401`, so the
+station falls back down the quality ladder automatically, logs the downgrade
+once, and keeps playing.
+
+For genuine lossless, re-link using the browser redirect (PKCE) flow, which is
+the only login Tidal authorises for it — it needs a terminal because you paste
+the redirect URL back:
+
+```bash
+tidal-radio auth --pkce            # then set quality: LOSSLESS in config.yaml
+systemctl restart tidal-radio
+```
+
 ### Other hosts
 
 - **LXD/Incus**: `./lxc/create-lxd.sh tidal-radio` (simple non-wizard script).
