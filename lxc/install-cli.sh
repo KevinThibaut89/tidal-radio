@@ -14,6 +14,7 @@ DATA=/var/lib/tidal-radio
 cat > /usr/local/bin/tidal-radio <<EOF
 #!/usr/bin/env bash
 set -a; [ -f $ETC/secrets.env ] && . $ETC/secrets.env 2>/dev/null; set +a
+export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python  # librespot stubs
 if [ "\$(id -u)" -eq 0 ]; then
   exec runuser -u radio -- $VENV/bin/python -m app "\$@"
 fi

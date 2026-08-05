@@ -80,7 +80,9 @@ class Orchestrator:
             "source": self.source_name,
             "tidal_linked": self.source.is_linked(),   # "source is linked"; name kept for the UI
             "dj_provider": self.dj.active_provider(),
-            "quality": self.tidal.quality,
+            "quality": getattr(self.source, "served_quality", None)
+                       or self.source.quality,
+            "discovery_supported": self.discovery_supported(),
             "tidal_error": self.tidal.last_error,
             "throttled_for": round(self.tidal.throttled_for()),
             "library_tracks": self.db.query(
@@ -119,6 +121,31 @@ class Orchestrator:
         threading.Thread(target=_run, daemon=True, name="sync").start()
         return True
 
+    def discovery_stats(self) -> dict:
+        rows = self.db.query(
+            """SELECT COALESCE(origin,'library') AS origin, COUNT(*) AS c
+               FROM tracks GROUP BY 1""")
+        by_origin = {r["origin"]: r["c"] for r in rows}
+        recent = self.db.query(
+            """SELECT title, artist, cover_url, origin FROM tracks
+               WHERE origin IS NOT NULL AND origin != 'library'
+               ORDER BY added_at DESC LIMIT 12""")
+        return {"by_origin": by_origin,
+                "pool": self.discovery.pool_size(),
+                "library": by_origin.get("library", 0),
+                "note": self.discovery.last_ai_note,
+                "last_run": self.discovery.last_run,
+                "last_added": self.discovery.last_added,
+                "recent": [dict(r) for r in recent]}
+
+    def discover_now(self) -> bool:
+        """Kick off a discovery pass without waiting for the schedule."""
+        if not self.source.is_linked() or not self.discovery_supported():
+            return False
+        threading.Thread(target=self.discovery.run, daemon=True,
+                         name="discovery-now").start()
+        return True
+
     def force_show(self, show_id: str | None) -> bool:
         if show_id is None:
             self.forced_show = None
@@ -140,8 +167,12 @@ class Orchestrator:
         if self.cfg.get("analysis.background", True):
             threading.Thread(target=self._analysis_worker, daemon=True,
                              name="analysis").start()
-        threading.Thread(target=self._discovery_worker, daemon=True,
-                         name="discovery").start()
+        if self.discovery_supported():
+            threading.Thread(target=self._discovery_worker, daemon=True,
+                             name="discovery").start()
+        else:
+            log.info("Discovery is Tidal-only for now — not starting it for %s",
+                     self.source_name)
 
         self.running = True
         queue_ahead = int(self.cfg.get("engine.queue_ahead", 2))
@@ -281,6 +312,11 @@ class Orchestrator:
         keys = ("kind", "title", "artist", "album", "bpm", "camelot", "script",
                 "cover_url", "duration")
         return {k: item.get(k) for k in keys if item.get(k) is not None}
+
+    def discovery_supported(self) -> bool:
+        """Discovery drives Tidal's radio/mix endpoints; Spotify has no
+        equivalent wired up yet, so it is switched off rather than failing."""
+        return self.source_name == "tidal"
 
     def _discovery_worker(self):
         """Keep the discovery pool stocked with music outside the library."""

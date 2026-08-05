@@ -190,14 +190,18 @@ class Discovery:
         if not suggestions:
             return 0
 
+        # Deep cuts count as discovery too: an unheard track by an artist you
+        # already love is exactly what a good radio station digs out. Only the
+        # tracks you already have are skipped, and _store does that by id.
+        deep_cuts = bool(self.cfg.get("discovery.deep_cuts", True))
         known = {r["artist"].lower() for r in
                  self.db.query("SELECT DISTINCT artist FROM tracks")}
         added = 0
         for s in suggestions:
             if added >= budget:
                 break
-            if s["artist"].lower() in known:
-                continue          # already in the library — not a discovery
+            if not deep_cuts and s["artist"].lower() in known:
+                continue
             track = self._find_track(s["artist"], s["title"])
             if track is None:
                 continue
@@ -223,6 +227,8 @@ class Discovery:
                 "already_suggested": [r["artist"] for r in disliked]}
 
     def _ask_model(self, profile: dict, want: int) -> list[dict]:
+        deep_share = (float(self.cfg.get("discovery.deep_cut_share", 0.3))
+                      if self.cfg.get("discovery.deep_cuts", True) else 0.0)
         provider, key, model = self._model_choice()
         if provider is None:
             self.last_ai_note = "no API key set — AI discovery skipped"
@@ -234,10 +240,14 @@ class Discovery:
             + (f"Already suggested, do not repeat: {', '.join(profile['already_suggested'][:40])}.\n"
                if profile["already_suggested"] else "")
             + f"\nSuggest {want} specific tracks they would likely love but probably "
-              "haven't heard. Favour artists NOT in the lists above. Reach across "
-              "scenes, eras and countries rather than the obvious neighbours, but keep "
-              "the sensibility recognisably theirs. Real, findable recordings only — "
-              "no invented titles."
+              "haven't heard.\n"
+            + (f"Roughly {int(deep_share * 100)}% should be deep cuts by artists they "
+               "already love — the album tracks and B-sides, not the hits they "
+               "obviously know. The rest should be artists new to them.\n"
+               if deep_share > 0 else "Favour artists NOT in the lists above.\n")
+            + "Reach across scenes, eras and countries rather than picking the obvious "
+              "neighbours, but keep the sensibility recognisably theirs. Real, findable "
+              "recordings only — never invent a title."
         )
         system = ("You are a music director for a personal radio station with deep "
                   "catalogue knowledge. You suggest real recordings, never invented ones.")

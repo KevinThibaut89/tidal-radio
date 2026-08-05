@@ -9,6 +9,8 @@ User=radio
 Group=radio
 EnvironmentFile=/etc/tidal-radio/secrets.env
 Environment=TIDAL_RADIO_CONFIG=/etc/tidal-radio/config.yaml
+# librespot's protoc-3.20 stubs only load under the pure-python backend
+Environment=PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
 WorkingDirectory=/opt/tidal-radio/src
 ExecStart=/opt/tidal-radio/venv/bin/python -m app run
 Restart=always

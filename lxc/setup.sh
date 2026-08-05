@@ -26,6 +26,11 @@ echo "==> Python virtualenv"
 "$VENV/bin/pip" install --upgrade pip wheel >/dev/null
 "$VENV/bin/pip" install -r "$SRC/requirements.txt"
 
+# librespot (Spotify source) declares protobuf==3.20.1, which is unresolvable
+# alongside onnxruntime; install it without its dependency metadata.
+"$VENV/bin/pip" install -q --no-deps librespot==0.0.10 || \
+  echo "WARN: librespot install failed — the Spotify source will be unavailable"
+
 # CLI shim (runs as the radio service user — see install-cli.sh)
 bash "$SRC/lxc/install-cli.sh"
 # make `python -m app` importable from the src dir

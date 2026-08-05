@@ -33,6 +33,12 @@ if [ "$OLD_REQ" != "$NEW_REQ" ]; then
   "$VENV/bin/pip" install -q -r "$SRC/requirements.txt"
 fi
 
+# librespot (Spotify source) declares protobuf==3.20.1, which is unresolvable
+# alongside onnxruntime, so it installs without dependency metadata. Idempotent,
+# and outside the requirements check so an older container still picks it up.
+"$VENV/bin/pip" install -q --no-deps librespot==0.0.10 || \
+  echo "WARN: librespot install failed — the Spotify source will be unavailable"
+
 echo "==> Refreshing CLI + services"
 bash "$SRC/lxc/install-cli.sh"
 cp "$SRC/lxc/systemd/liquidsoap-radio.service" /etc/systemd/system/

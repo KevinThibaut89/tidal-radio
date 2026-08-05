@@ -164,9 +164,18 @@ controls, **and setup**. Nothing else is needed to get the station running —
 - The setup card appears automatically until Tidal is linked, and is always
   reachable with the ⚙ Setup button.
 
-> ⚠️ The control UI has **no password**. Anyone who can reach port 8080 on your
-> network can read status and set API keys. Keep it on a trusted LAN — or set
-> `api.host: 127.0.0.1` in `config.yaml` and reach it over an SSH tunnel.
+### Protecting the control UI
+
+The UI ships **unprotected** so you can reach it straight after install — which
+also means anyone on your network can, until you set a password. Do it early:
+**Settings → Setup → Password**. Notes:
+
+- The first password can be set by anyone who reaches the page, so set it as
+  soon as the station is up.
+- Sessions live in memory only, so restarting the service signs everyone out.
+- It is plain HTTP on your LAN — fine at home, not something to expose to the
+  internet. For remote access use an SSH tunnel or a VPN rather than a port
+  forward, or set `api.host: 127.0.0.1`.
 
 | Endpoint | Description |
 |---|---|
@@ -178,6 +187,11 @@ controls, **and setup**. Nothing else is needed to get the station running —
 | `POST /tidal/link` · `GET /tidal/status` | Start device linking / poll it |
 | `POST /tidal/sync` | Sync favorites in the background |
 | `GET /settings` · `POST /settings` | Read (keys masked) / set DJ provider + keys |
+| `GET /config` · `PATCH /config` | Every editable setting: schema, values, live updates |
+| `GET /discovery` · `POST /discovery/run` | Discovery pool stats / find more now |
+| `GET /voices` · `POST /voices/preview` | Installed Piper voices / audition one |
+| `POST /auth/login` · `POST /auth/password` | Sign in / set-change-remove the password |
+| `POST /spotify/link` · `POST /spotify/link/code` | Spotify OAuth: get URL / submit pasted code |
 
 ## How the radio thinks
 

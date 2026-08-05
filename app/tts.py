@@ -39,8 +39,34 @@ class TTS:
             log.error("TTS failed: %s", e)
             return None
 
-    def _piper(self, text: str, out: Path) -> bool:
-        voice = self.cfg.get("tts.piper.voice", "en_US-lessac-medium")
+    def list_voices(self) -> list[dict]:
+        """Piper voices installed in the voices directory."""
+        out = []
+        for model in sorted(self.cfg.voices_dir.glob("*.onnx")):
+            name = model.stem
+            # en_US-lessac-medium -> "Lessac (en_US, medium)"
+            parts = name.split("-")
+            label = name
+            if len(parts) >= 3:
+                label = f"{parts[1].title()} ({parts[0]}, {parts[2]})"
+            out.append({"value": name, "label": label})
+        return out
+
+    def preview(self, text: str, voice: str | None = None) -> Path | None:
+        """Render a short sample so the UI can audition a voice."""
+        raw = self.cfg.breaks_dir / f"preview-{int(time.time())}.raw.wav"
+        out = self.cfg.breaks_dir / f"preview-{int(time.time())}.wav"
+        if not self._piper(text, raw, voice=voice):
+            return None
+        proc = subprocess.run(
+            ["ffmpeg", "-y", "-loglevel", "error", "-i", str(raw),
+             "-af", "loudnorm=I=-16:TP=-1.5:LRA=11", "-ar", "44100", str(out)],
+            capture_output=True, text=True)
+        raw.unlink(missing_ok=True)
+        return out if proc.returncode == 0 and out.exists() else None
+
+    def _piper(self, text: str, out: Path, voice: str | None = None) -> bool:
+        voice = voice or self.cfg.get("tts.piper.voice", "en_US-lessac-medium")
         model = self.cfg.voices_dir / f"{voice}.onnx"
         if not model.exists():
             log.error("Piper voice model missing: %s", model)

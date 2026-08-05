@@ -5,9 +5,9 @@
 <meta name="theme-color" content="#f6f1e7">
 <title>__NAME__</title>
 <style>
-/* ─── Warm editorial: paper, ink, and one terracotta accent ─────────── */
+/* ─── Warm editorial: paper, ink, one terracotta accent ─────────────── */
 :root{
-  --paper:#f6f1e7; --paper-raised:#fffdf8; --paper-sunk:#efe8da;
+  --paper:#f6f1e7; --paper-raised:#fffdf8; --paper-sunk:#efe8da; --rail:#f1ebdf;
   --ink:#1c1815; --ink-soft:#4a423a; --ink-faint:#8a7f72;
   --rule:#e2d9c8; --accent:#a8442a; --accent-soft:#f2e3dc; --on-air:#3f7d54;
   --shadow:0 1px 2px rgba(28,24,21,.06), 0 8px 24px -12px rgba(28,24,21,.18);
@@ -15,214 +15,397 @@
   --text:"Charter","Bitstream Charter","Sitka Text",Cambria,Georgia,serif;
   --ui:ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
   --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
-  --radius:10px;
+  --radius:10px; --sidebar:238px;
 }
 @media (prefers-color-scheme:dark){
   :root{
-    --paper:#15110e; --paper-raised:#1e1815; --paper-sunk:#100d0b;
+    --paper:#15110e; --paper-raised:#1e1815; --paper-sunk:#100d0b; --rail:#181310;
     --ink:#f3ece0; --ink-soft:#c6bbab; --ink-faint:#8d8073;
     --rule:#332b24; --accent:#e0734c; --accent-soft:#2c1d16; --on-air:#63b083;
     --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px -14px rgba(0,0,0,.7);
   }
 }
 :root[data-theme="light"]{
-  --paper:#f6f1e7; --paper-raised:#fffdf8; --paper-sunk:#efe8da;
+  --paper:#f6f1e7; --paper-raised:#fffdf8; --paper-sunk:#efe8da; --rail:#f1ebdf;
   --ink:#1c1815; --ink-soft:#4a423a; --ink-faint:#8a7f72;
   --rule:#e2d9c8; --accent:#a8442a; --accent-soft:#f2e3dc; --on-air:#3f7d54;
 }
 :root[data-theme="dark"]{
-  --paper:#15110e; --paper-raised:#1e1815; --paper-sunk:#100d0b;
+  --paper:#15110e; --paper-raised:#1e1815; --paper-sunk:#100d0b; --rail:#181310;
   --ink:#f3ece0; --ink-soft:#c6bbab; --ink-faint:#8d8073;
   --rule:#332b24; --accent:#e0734c; --accent-soft:#2c1d16; --on-air:#63b083;
 }
 *{box-sizing:border-box}
+html,body{height:100%}
 body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--text);
-  font-size:17px;line-height:1.6;-webkit-font-smoothing:antialiased;
-  font-feature-settings:"kern","liga","onum";}
-.wrap{max-width:680px;margin:0 auto;padding:36px 22px 64px}
+  font-size:16.5px;line-height:1.6;-webkit-font-smoothing:antialiased;
+  font-feature-settings:"kern","liga","onum"}
+a{color:var(--accent)}
+.hidden{display:none !important}
+svg.i{width:17px;height:17px;flex:none;stroke:currentColor;fill:none;
+  stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
 
-/* masthead */
-.masthead{display:flex;align-items:baseline;justify-content:space-between;
-  gap:16px;border-bottom:2px solid var(--ink);padding-bottom:12px}
-.wordmark{font-family:var(--display);font-size:2.1rem;line-height:1.1;
-  letter-spacing:-.015em;margin:0;font-weight:600}
-.tagline{font-style:italic;color:var(--ink-faint);font-size:.95rem;margin:6px 0 0}
-.onair{font-family:var(--ui);font-size:.66rem;letter-spacing:.14em;
-  text-transform:uppercase;color:var(--ink-faint);display:flex;align-items:center;
-  gap:7px;white-space:nowrap}
-.onair b{color:var(--on-air);font-weight:600}
+/* ─── shell: sidebar + scrolling main + persistent player bar ─── */
+.app{display:grid;grid-template-columns:var(--sidebar) 1fr;
+  grid-template-rows:1fr auto;min-height:100dvh}
+.sidebar{grid-row:1;background:var(--rail);border-right:1px solid var(--rule);
+  padding:26px 18px 18px;display:flex;flex-direction:column;gap:20px;
+  position:sticky;top:0;height:calc(100dvh - 63px)}
+
+/* player bar — the thing that makes it feel like a music client */
+.player{grid-column:1/-1;grid-row:2;position:sticky;bottom:0;z-index:15;
+  background:var(--paper-raised);border-top:1px solid var(--rule);
+  display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:16px;
+  padding:10px 20px;box-shadow:0 -6px 20px -18px rgba(0,0,0,.5)}
+.player .np{display:flex;gap:12px;align-items:center;min-width:0}
+.player .np img,.player .np .ph{width:46px;height:46px;border-radius:6px;flex:none;
+  object-fit:cover;background:var(--paper-sunk);display:flex;align-items:center;
+  justify-content:center;color:var(--ink-faint)}
+.player .np .t{font-size:.92rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.player .np .a{font-size:.8rem;color:var(--ink-faint);white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.player .transport{display:flex;gap:8px;align-items:center;justify-self:center}
+.player .right{justify-self:end;display:flex;align-items:center;gap:12px;min-width:0}
+.player audio{width:230px;margin:0;height:34px}
+.iconbtn{all:unset;cursor:pointer;display:inline-flex;align-items:center;
+  justify-content:center;width:38px;height:38px;border-radius:50%;color:var(--ink-soft);
+  border:1px solid var(--rule);background:var(--paper)}
+.iconbtn:hover{color:var(--ink);border-color:var(--ink-faint)}
+.iconbtn.accent{background:var(--accent);border-color:var(--accent);color:#fff}
+@media(max-width:760px){
+  .player{grid-template-columns:1fr auto;gap:10px;padding:8px 14px;bottom:56px}
+  .player .right{display:none}
+}
+.brand .wordmark{font-family:var(--display);font-size:1.6rem;line-height:1.1;
+  margin:0;letter-spacing:-.015em;font-weight:600}
+.brand .tagline{font-style:italic;color:var(--ink-faint);font-size:.84rem;margin:5px 0 0}
+nav{display:flex;flex-direction:column;gap:2px}
+nav button{all:unset;display:flex;align-items:center;gap:10px;cursor:pointer;
+  font-family:var(--ui);font-size:.92rem;padding:9px 11px;border-radius:8px;
+  color:var(--ink-soft);transition:background .14s,color .14s}
+nav button:hover{background:var(--paper-sunk);color:var(--ink)}
+nav button.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.badge{margin-left:auto;font-family:var(--mono);font-size:.67rem;background:var(--accent);
+  color:#fff;border-radius:99px;padding:1px 6px}
+.rail-foot{margin-top:auto;font-family:var(--ui);font-size:.73rem;color:var(--ink-faint)}
+.mini{display:flex;gap:9px;align-items:center;padding:11px 0;
+  border-top:1px solid var(--rule)}
+.mini img,.mini .ph{width:34px;height:34px;border-radius:5px;object-fit:cover;
+  background:var(--paper-sunk);flex:none;display:flex;align-items:center;
+  justify-content:center;color:var(--ink-faint)}
+.mini .t{font-size:.81rem;line-height:1.25;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis}
+.mini .a{font-size:.74rem;color:var(--ink-faint);white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis}
+.onair{display:flex;align-items:center;gap:7px;font-family:var(--ui);font-size:.65rem;
+  letter-spacing:.14em;text-transform:uppercase;margin-bottom:6px}
 .dot{width:7px;height:7px;border-radius:50%;background:var(--ink-faint);flex:none}
 .dot.live{background:var(--on-air);animation:pulse 2.4s ease-in-out infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
 @media (prefers-reduced-motion:reduce){.dot.live{animation:none}}
 
-/* now playing */
-.hero{display:grid;grid-template-columns:132px 1fr;gap:22px;align-items:start;
-  padding:26px 0 22px;border-bottom:1px solid var(--rule)}
-.art{width:132px;height:132px;border-radius:var(--radius);object-fit:cover;
-  background:var(--paper-sunk);box-shadow:var(--shadow);display:block}
-.art.placeholder{display:flex;align-items:center;justify-content:center;
-  font-size:2.4rem;color:var(--ink-faint)}
-.eyebrow{font-family:var(--ui);font-size:.68rem;letter-spacing:.16em;
-  text-transform:uppercase;color:var(--accent);margin:2px 0 6px;font-weight:600}
-.track{font-family:var(--display);font-size:1.6rem;line-height:1.2;margin:0 0 4px;
-  letter-spacing:-.01em}
-.artist{margin:0;color:var(--ink-soft);font-size:1.05rem}
-.album{margin:2px 0 0;color:var(--ink-faint);font-size:.92rem;font-style:italic}
-.meta{font-family:var(--mono);font-size:.74rem;color:var(--ink-faint);
-  margin-top:12px;display:flex;flex-wrap:wrap;gap:10px}
-.meta span{background:var(--paper-sunk);padding:3px 8px;border-radius:5px}
-@media(max-width:520px){
-  .hero{grid-template-columns:1fr;gap:16px}
-  .art,.art.placeholder{width:100%;height:auto;aspect-ratio:1}
-  .wordmark{font-size:1.7rem}
+main{padding:34px 40px 70px;max-width:830px}
+.view{animation:fade .18s ease-out}
+@keyframes fade{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.view{animation:none}}
+h2.title{font-family:var(--display);font-size:1.75rem;margin:0 0 4px;font-weight:600}
+p.lede{color:var(--ink-faint);margin:0 0 22px;font-style:italic}
+.mobile-brand{display:none;border-bottom:2px solid var(--ink);padding-bottom:10px;
+  margin-bottom:18px;font-family:var(--display);font-size:1.5rem;font-weight:600}
+
+@media(max-width:760px){
+  .app{grid-template-columns:1fr}
+  .sidebar{position:fixed;bottom:0;left:0;right:0;top:auto;height:auto;
+    flex-direction:row;padding:7px 8px;border-right:none;border-top:1px solid var(--rule);
+    z-index:20;gap:0}
+  .brand,.rail-foot{display:none}
+  nav{flex-direction:row;width:100%;justify-content:space-around}
+  nav button{flex-direction:column;gap:3px;font-size:.68rem;padding:5px 8px}
+  .badge{position:absolute;transform:translate(14px,-6px);margin:0}
+  main{padding:22px 18px 96px;max-width:none}
+  .mobile-brand{display:block}
 }
 
-/* transport */
-audio{width:100%;margin:20px 0 14px;height:38px}
+/* ─── now playing ─── */
+.hero{display:grid;grid-template-columns:150px 1fr;gap:24px;align-items:start}
+.art,.art-ph{width:150px;height:150px;border-radius:var(--radius);object-fit:cover;
+  background:var(--paper-sunk);box-shadow:var(--shadow)}
+.art-ph{display:flex;align-items:center;justify-content:center;color:var(--ink-faint)}
+.art-ph svg{width:34px;height:34px}
+.eyebrow{font-family:var(--ui);font-size:.67rem;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--accent);margin:2px 0 6px;font-weight:600}
+.np-title{font-family:var(--display);font-size:1.72rem;line-height:1.2;margin:0 0 4px}
+.np-artist{margin:0;color:var(--ink-soft);font-size:1.04rem}
+.np-album{margin:2px 0 0;color:var(--ink-faint);font-size:.9rem;font-style:italic}
+.meta{font-family:var(--mono);font-size:.72rem;color:var(--ink-faint);margin-top:13px;
+  display:flex;flex-wrap:wrap;gap:8px}
+.meta span{background:var(--paper-sunk);padding:3px 8px;border-radius:5px}
+.meta span.new{background:var(--accent);color:#fff}
+@media(max-width:560px){.hero{grid-template-columns:1fr}
+  .art,.art-ph{width:100%;height:auto;aspect-ratio:1}}
+audio{width:100%;margin:22px 0 14px;height:38px}
 .controls{display:flex;flex-wrap:wrap;gap:9px}
-button{font-family:var(--ui);font-size:.86rem;background:var(--paper-raised);
-  color:var(--ink);border:1px solid var(--rule);border-radius:99px;
-  padding:8px 16px;cursor:pointer;transition:background .15s,border-color .15s}
-button:hover{border-color:var(--ink-faint);background:var(--paper-sunk)}
-button:active{transform:translateY(1px)}
-button.accent{background:var(--accent);border-color:var(--accent);color:#fff}
-button.accent:hover{filter:brightness(1.08)}
-button:disabled{opacity:.45;cursor:default}
-button.ghost{background:none}
+button.btn{display:inline-flex;align-items:center;gap:7px;font-family:var(--ui);
+  font-size:.85rem;background:var(--paper-raised);color:var(--ink);
+  border:1px solid var(--rule);border-radius:99px;padding:8px 16px;cursor:pointer;
+  transition:background .15s,border-color .15s}
+button.btn:hover{border-color:var(--ink-faint);background:var(--paper-sunk)}
+button.btn.accent{background:var(--accent);border-color:var(--accent);color:#fff}
+button.btn.accent:hover{filter:brightness(1.08)}
+button.btn:disabled{opacity:.45;cursor:default}
 
-/* sections */
-h2{font-family:var(--ui);font-size:.7rem;letter-spacing:.16em;text-transform:uppercase;
+h3.sec{font-family:var(--ui);font-size:.69rem;letter-spacing:.16em;text-transform:uppercase;
   color:var(--ink-faint);font-weight:600;margin:34px 0 10px}
-.history{list-style:none;padding:0;margin:0}
-.history li{display:flex;gap:12px;align-items:center;padding:9px 0;
+.list{list-style:none;padding:0;margin:0}
+.list li{display:flex;gap:12px;align-items:center;padding:9px 0;
   border-bottom:1px solid var(--rule)}
-.history li:last-child{border-bottom:none}
+.list li:last-child{border-bottom:none}
 .thumb{width:38px;height:38px;border-radius:5px;object-fit:cover;flex:none;
   background:var(--paper-sunk)}
-.h-title{font-size:.97rem} .h-artist{color:var(--ink-faint);font-size:.87rem}
+.l-title{font-size:.96rem} .l-sub{color:var(--ink-faint);font-size:.85rem}
+.tag{font-family:var(--ui);font-size:.63rem;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--accent);border:1px solid var(--accent);border-radius:99px;padding:1px 7px;
+  margin-left:auto;flex:none}
 
-/* notices */
+/* ─── cards & fields ─── */
+.card{background:var(--paper-raised);border:1px solid var(--rule);border-radius:var(--radius);
+  padding:20px 22px;margin:0 0 18px;box-shadow:var(--shadow)}
+.card h4{font-family:var(--display);font-size:1.14rem;margin:0 0 4px;
+  display:flex;align-items:center;gap:9px}
+.card p.hint{color:var(--ink-faint);font-size:.87rem;margin:0 0 14px}
 .notice{background:var(--accent-soft);border:1px solid var(--accent);
-  border-radius:var(--radius);padding:13px 16px;margin:18px 0;font-size:.93rem}
-.notice code{font-family:var(--mono);font-size:.85em;background:var(--paper-sunk);
+  border-radius:var(--radius);padding:13px 16px;margin:0 0 18px;font-size:.92rem}
+.notice code,.hint code{font-family:var(--mono);font-size:.85em;background:var(--paper-sunk);
   padding:1px 5px;border-radius:4px}
-
-/* setup + settings */
-.panel{background:var(--paper-raised);border:1px solid var(--rule);
-  border-radius:var(--radius);padding:20px 22px;margin:20px 0;box-shadow:var(--shadow)}
-.panel h3{font-family:var(--display);font-size:1.2rem;margin:0 0 4px}
-.panel p.hint{color:var(--ink-faint);font-size:.88rem;margin:0 0 14px}
-.step{display:flex;gap:9px;align-items:baseline;font-family:var(--ui);
-  font-size:.95rem;font-weight:600;margin:16px 0 6px}
-.step:first-of-type{margin-top:4px}
-.state{font-weight:400;color:var(--ink-faint);font-size:.86rem}
-.ok{color:var(--on-air)} .warn{color:var(--accent)}
-label{display:block;font-family:var(--ui);font-size:.8rem;color:var(--ink-soft);
+label{display:block;font-family:var(--ui);font-size:.79rem;color:var(--ink-soft);
   margin:12px 0 3px;font-weight:500}
-input,select,textarea{width:100%;font-family:var(--ui);font-size:.9rem;
+input,select,textarea{width:100%;font-family:var(--ui);font-size:.89rem;
   background:var(--paper);color:var(--ink);border:1px solid var(--rule);
   border-radius:7px;padding:8px 10px}
-input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);
-  outline-offset:1px;border-color:transparent}
-textarea{min-height:80px;font-family:var(--text);line-height:1.5;resize:vertical}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:1px;
+  border-color:transparent}
+textarea{min-height:86px;font-family:var(--text);line-height:1.5;resize:vertical}
 input[type=range]{padding:0;accent-color:var(--accent)}
 input[type=checkbox]{width:auto;accent-color:var(--accent);transform:scale(1.15)}
-.field{margin-bottom:4px}
+.field{margin-bottom:6px}
 .field .row{display:flex;align-items:center;gap:12px}
 .field .row input[type=range]{flex:1}
-.val{font-family:var(--mono);font-size:.8rem;color:var(--ink-faint);
-  min-width:3.2em;text-align:right}
-.help{font-size:.79rem;color:var(--ink-faint);margin:3px 0 0}
-.group{border-top:1px solid var(--rule);padding-top:14px;margin-top:18px}
-.group:first-of-type{border-top:none;margin-top:6px;padding-top:0}
-.group h4{font-family:var(--ui);font-size:.72rem;letter-spacing:.14em;
-  text-transform:uppercase;color:var(--ink-faint);margin:0 0 6px}
-.saved{font-family:var(--ui);font-size:.8rem;color:var(--on-air);margin-left:8px}
-.footer{margin-top:40px;padding-top:16px;border-top:1px solid var(--rule);
-  font-family:var(--ui);font-size:.78rem;color:var(--ink-faint);
-  display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
-.footer a{color:var(--ink-faint)}
-.hidden{display:none !important}
+.val{font-family:var(--mono);font-size:.79rem;color:var(--ink-faint);min-width:3.2em;
+  text-align:right}
+.help{font-size:.78rem;color:var(--ink-faint);margin:3px 0 0}
+.saved{font-family:var(--ui);font-size:.77rem;color:var(--on-air);margin-left:8px}
+.ok{color:var(--on-air)} .warn{color:var(--accent)}
+.state{font-family:var(--ui);font-size:.84rem;color:var(--ink-faint)}
+
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin:0 0 20px}
+.chips button{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:7px;
+  font-family:var(--ui);font-size:.82rem;padding:6px 13px;border-radius:99px;
+  border:1px solid var(--rule);color:var(--ink-soft)}
+.chips button.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.grp{display:none} .grp.on{display:block}
+
+/* wizard */
+.steps{display:flex;gap:8px;margin:0 0 22px}
+.steps div{flex:1;height:3px;border-radius:2px;background:var(--rule)}
+.steps div.on{background:var(--accent)}
+.wiz-nav{display:flex;justify-content:space-between;gap:10px;margin-top:20px}
+.choice{display:flex;gap:10px;flex-wrap:wrap;margin:6px 0 4px}
+.choice button{all:unset;cursor:pointer;border:1px solid var(--rule);border-radius:9px;
+  padding:13px 16px;font-family:var(--ui);font-size:.89rem;flex:1;min-width:150px;
+  background:var(--paper)}
+.choice button.on{border-color:var(--accent);background:var(--accent-soft);
+  color:var(--accent);font-weight:600}
+.choice button small{display:block;font-weight:400;color:var(--ink-faint);
+  font-size:.76rem;margin-top:3px}
+
+/* login */
+.gate{min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:28px 22px}
+.gate .card{width:100%;max-width:360px;text-align:center;margin:0}
+.gate .wordmark{font-family:var(--display);font-size:1.85rem;margin:0;font-weight:600}
+.gate hr{border:none;border-top:2px solid var(--ink);margin:13px 0 16px}
+.gate input{text-align:center}
+.gate button{width:100%;margin-top:14px;justify-content:center}
+.gate .err{font-family:var(--ui);font-size:.82rem;color:var(--accent);margin:12px 0 0}
 </style></head>
 <body>
-<div class="wrap">
 
-  <header class="masthead">
-    <div>
+<div class="gate hidden" id="gate">
+  <form class="card" onsubmit="doLogin(event)">
+    <h1 class="wordmark">__NAME__</h1>
+    <hr>
+    <p class="hint">This station is private.</p>
+    <input type="password" id="login-pw" placeholder="Password" aria-label="Password"
+           autocomplete="current-password">
+    <button class="btn accent" type="submit">Listen in</button>
+    <p class="err hidden" id="login-err"></p>
+  </form>
+</div>
+
+<div class="app hidden" id="app">
+  <aside class="sidebar">
+    <div class="brand">
       <h1 class="wordmark">__NAME__</h1>
       <p class="tagline" id="tagline"></p>
     </div>
-    <div class="onair"><span class="dot" id="dot"></span><span id="onair-text">connecting</span></div>
-  </header>
-
-  <div class="notice hidden" id="notice"></div>
-
-  <section class="hero">
-    <img class="art" id="art" alt="" hidden>
-    <div class="art placeholder" id="art-ph">♪</div>
-    <div>
-      <p class="eyebrow" id="eyebrow">Now playing</p>
-      <h2 class="track" id="track" style="font-family:var(--display);font-size:1.6rem;
-        text-transform:none;letter-spacing:-.01em;color:var(--ink);margin:0 0 4px">…</h2>
-      <p class="artist" id="artist"></p>
-      <p class="album" id="album"></p>
-      <div class="meta" id="meta"></div>
+    <nav id="nav">
+      <button data-view="now" class="on"></button>
+      <button data-view="discovery"></button>
+      <button data-view="settings"></button>
+    </nav>
+    <div class="rail-foot">
+      <div class="onair"><span class="dot" id="dot"></span><span id="onair-text">…</span></div>
+      <div id="rail-stats"></div>
     </div>
-  </section>
+  </aside>
 
-  <audio controls id="stream"></audio>
-  <div class="controls">
-    <button class="accent" onclick="post('/skip')">Skip track</button>
-    <button onclick="post('/break')">DJ break</button>
-    <button class="ghost" onclick="togglePanel('setup')">Setup</button>
-    <button class="ghost" onclick="togglePanel('settings')">Settings</button>
-    <button class="ghost" onclick="cycleTheme()" id="theme-btn" title="Theme">Theme</button>
-  </div>
+  <main>
+    <div class="mobile-brand">__NAME__</div>
+    <div class="notice hidden" id="notice"></div>
 
-  <!-- ─── setup ─── -->
-  <div class="panel hidden" id="setup">
-    <h3>Setup</h3>
-    <p class="hint">Connect your music account and, if you'd like a talking DJ, an AI key.</p>
+    <section class="view" id="view-now">
+      <div class="hero">
+        <img class="art hidden" id="art" alt="">
+        <div class="art-ph" id="art-ph"></div>
+        <div>
+          <p class="eyebrow" id="eyebrow">Now playing</p>
+          <h2 class="np-title" id="np-title">—</h2>
+          <p class="np-artist" id="np-artist"></p>
+          <p class="np-album" id="np-album"></p>
+          <div class="meta" id="meta"></div>
+        </div>
+      </div>
+      <h3 class="sec">Recently played</h3>
+      <ul class="list" id="history"></ul>
+    </section>
 
-    <div class="step"><span id="t-icon">○</span> Music account
-      <span class="state" id="t-state"></span></div>
-    <div>
-      <button class="accent" id="btn-link" onclick="startLink()">Link Tidal account</button>
-      <button id="btn-sync" onclick="syncNow()">Sync library</button>
+    <section class="view hidden" id="view-discovery">
+      <h2 class="title">Discovery</h2>
+      <p class="lede">Music the station found for you, beyond what you already own.</p>
+      <div class="card">
+        <div id="disc-stats" class="state"></div>
+        <div style="margin-top:14px">
+          <button class="btn accent" id="btn-discover" onclick="discoverNow()">Find more now</button>
+          <span class="saved hidden" id="disc-started">Looking…</span>
+        </div>
+        <p class="help" id="disc-note"></p>
+      </div>
+      <div class="card">
+        <h4>Balance</h4>
+        <p class="hint">How often the station reaches for something new instead of music you have.</p>
+        <div id="balance-field"></div>
+      </div>
+      <h3 class="sec">Recently found</h3>
+      <ul class="list" id="disc-recent"></ul>
+    </section>
+
+    <section class="view hidden" id="view-settings">
+      <h2 class="title" id="set-title">Settings</h2>
+      <p class="lede" id="set-lede">Changes apply immediately unless marked otherwise.</p>
+      <div class="chips" id="chips"></div>
+
+      <!-- Setup lives here as the first sub-tab -->
+      <div class="grp on" data-grp="setup" id="grp-setup">
+      <div class="steps" id="steps"><div class="on"></div><div></div><div></div></div>
+
+      <div class="card wiz" id="wiz-1">
+        <h4>Your music</h4>
+        <p class="hint">The station plays from your own account. Pick a service and link it.</p>
+        <div class="choice" id="svc-choice">
+          <button data-svc="tidal" class="on">Tidal<small>Approve on your phone</small></button>
+          <button data-svc="spotify">Spotify<small>Premium required</small></button>
+        </div>
+        <div style="margin-top:12px;display:flex;gap:9px;align-items:center;flex-wrap:wrap">
+          <button class="btn accent" id="btn-link" onclick="startLink()">Link account</button>
+          <button class="btn hidden" id="btn-sync" onclick="syncNow()">Sync library</button>
+          <span class="state" id="t-state"></span>
+        </div>
+        <div id="t-link" class="hidden">
+          <p class="help">Open this link and approve — this page notices by itself.</p>
+          <p><a id="t-url" target="_blank" rel="noopener"></a></p>
+          <div id="code-box" class="hidden">
+            <label for="link-code">Paste the code or redirect URL you were given</label>
+            <input id="link-code" placeholder="…">
+            <button class="btn accent" style="margin-top:8px" onclick="submitCode()">Finish linking</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card wiz hidden" id="wiz-2">
+        <h4>The AI</h4>
+        <p class="hint">Two jobs: writing what the DJ says, and suggesting music you don't know
+          yet. Optional — without a key the DJ reads templates and discovery still uses your
+          service's own recommendations. Keys stay on this container.</p>
+        <label for="wiz-provider">Provider</label>
+        <select id="wiz-provider" onchange="wizProvider()">
+          <option value="anthropic">Claude (Anthropic)</option>
+          <option value="openai">OpenAI</option>
+          <option value="template">Neither — no AI</option>
+        </select>
+        <div id="wiz-key-box">
+          <label for="wiz-key">API key</label>
+          <input type="password" id="wiz-key" placeholder="sk-…" autocomplete="off">
+          <label for="wiz-model">Model for the DJ</label>
+          <select id="wiz-model"></select>
+          <label for="wiz-model-cheap">Model for discovery</label>
+          <select id="wiz-model-cheap"></select>
+          <p class="help">A small model is plenty for discovery — it returns a list of names.</p>
+        </div>
+        <div style="margin-top:14px">
+          <button class="btn accent" onclick="saveWizKeys()">Save</button>
+          <span class="saved hidden" id="wiz-key-saved">Saved</span>
+        </div>
+      </div>
+
+      <div class="card wiz hidden" id="wiz-3">
+        <h4>Familiar or new</h4>
+        <p class="hint">Where the station sits between music you already love and things you've
+          never heard. Change it any time.</p>
+        <div id="wiz-balance"></div>
+      </div>
+
+      <div class="wiz-nav">
+        <button class="btn" id="wiz-back" onclick="wizStep(-1)">Back</button>
+        <button class="btn accent" id="wiz-next" onclick="wizStep(1)">Next</button>
+      </div>
+
+      <div class="card" style="margin-top:26px">
+        <h4>Password</h4>
+        <p class="hint" id="p-state">Protect this page so only you can control the station.</p>
+        <label for="current_password">Current password</label>
+        <input type="password" id="current_password" autocomplete="current-password">
+        <label for="new_password">New password</label>
+        <input type="password" id="new_password" autocomplete="new-password">
+        <div style="margin-top:12px">
+          <button class="btn accent" onclick="savePassword(false)">Set password</button>
+          <button class="btn" onclick="savePassword(true)">Remove</button>
+          <span class="saved hidden" id="pw-saved">Saved</span>
+        </div>
+      </div>
+      </div><!-- /grp-setup -->
+
+      <div id="settings-body"></div>
+    </section>
+  </main>
+
+  <!-- persistent player bar -->
+  <div class="player">
+    <div class="np">
+      <div class="ph" id="mini-ph"></div>
+      <img id="mini-art" class="hidden" alt="">
+      <div style="min-width:0">
+        <div class="t" id="mini-title">—</div>
+        <div class="a" id="mini-artist"></div>
+      </div>
     </div>
-    <div id="t-link" class="hidden">
-      <p class="help">Open this link, approve, then come back — this page updates itself.</p>
-      <p><a id="t-url" target="_blank" rel="noopener"></a></p>
+    <div class="transport">
+      <button class="iconbtn" onclick="post('/break')" title="DJ break" id="btn-break"></button>
+      <button class="iconbtn accent" onclick="post('/skip')" title="Skip track" id="btn-skip"></button>
+      <button class="iconbtn" onclick="cycleTheme()" title="Theme" id="theme-btn"></button>
     </div>
-
-    <div class="step"><span id="k-icon">○</span> AI DJ
-      <span class="state" id="k-state"></span></div>
-    <p class="help">Optional — without a key the DJ reads from built-in scripts.
-      Keys are stored on this container only.</p>
-    <label for="anthropic_api_key">Anthropic API key</label>
-    <input type="password" id="anthropic_api_key" placeholder="sk-ant-…" autocomplete="off">
-    <label for="openai_api_key">OpenAI API key</label>
-    <input type="password" id="openai_api_key" placeholder="sk-…" autocomplete="off">
-    <div style="margin-top:14px">
-      <button class="accent" onclick="saveKeys()">Save keys</button>
-      <span class="saved hidden" id="keys-saved">Saved</span>
+    <div class="right">
+      <span class="state" id="player-meta"></span>
+      <audio controls id="stream"></audio>
     </div>
-  </div>
-
-  <!-- ─── settings ─── -->
-  <div class="panel hidden" id="settings">
-    <h3>Settings</h3>
-    <p class="hint">Changes apply immediately unless marked otherwise.</p>
-    <div id="settings-body"></div>
-  </div>
-
-  <h2>Recently played</h2>
-  <ul class="history" id="history"></ul>
-
-  <div class="footer">
-    <span id="foot-left"></span>
-    <span id="foot-right"></span>
   </div>
 </div>
 
@@ -230,59 +413,168 @@ input[type=checkbox]{width:auto;accent-color:var(--accent);transform:scale(1.15)
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g,
   c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let linkPolling = false, settingsBuilt = false, lastArt = null;
+
+/* line icons — no emoji, inherit colour and stroke from the button */
+const P = {
+  play:'M5 3.5v13l11-6.5z',
+  compass:'M12 21a9 9 0 100-18 9 9 0 000 18M15.5 8.5l-2 5-5 2 2-5z',
+  sliders:'M4 6h10M18 6h2M4 12h4M12 12h8M4 18h10M18 18h2M14 4v4M8 10v4M14 16v4',
+  wand:'M15 4V2M15 10V8M12.5 6h-2M19.5 6h-2M4 20l9-9M13.5 6.5l1 1',
+  radio:'M4 9h16v11H4zM8 9l9-5M8 14.5h.01M12 12.5v4M16 14.5h.01',
+  music:'M9 18V5l10-2v13M9 18a3 3 0 11-6 0 3 3 0 016 0zM19 16a3 3 0 11-6 0 3 3 0 016 0z',
+  mic:'M12 3a3 3 0 013 3v5a3 3 0 01-6 0V6a3 3 0 013-3zM6 11a6 6 0 0012 0M12 17v4',
+  speaker:'M4 9h4l5-4v14l-5-4H4zM16.5 8.5a5 5 0 010 7M19 6a9 9 0 010 12',
+  cloud:'M7 18a4 4 0 010-8 5.5 5.5 0 0110.5 1.5A3.5 3.5 0 0117 18z',
+  chart:'M4 20V10M10 20V4M16 20v-7M22 20H2',
+  note:'M9 18V5l10-2v13M9 18a3 3 0 11-6 0 3 3 0 016 0zM19 16a3 3 0 11-6 0 3 3 0 016 0z',
+  skip:'M5 4l9 8-9 8zM18 4v16',
+  theme:'M12 3a9 9 0 109 9 7 7 0 01-9-9z',
+  wand:'M15 4V2M15 10V8M12.5 6h-2M19.5 6h-2M4 20l9-9M13.5 6.5l1 1',
+};
+const icon = (name, cls) => P[name]
+  ? `<svg class="i ${cls || ''}" viewBox="0 0 24 24" aria-hidden="true"><path d="${P[name]}"/></svg>`
+  : '';
+
+let token = localStorage.getItem('token') || '';
+let linkPolling = false, settingsBuilt = false, lastArt = null, view = 'now', step = 1;
+let schema = null, svc = 'tidal';
 
 $('stream').src = location.protocol + '//' + location.hostname + ':8000/radio.mp3';
 
-const post = (path, body) => fetch(path, {
-  method: 'POST',
-  headers: body ? {'Content-Type': 'application/json'} : undefined,
-  body: body ? JSON.stringify(body) : undefined,
-});
-const patch = (path, body) => fetch(path, {
-  method: 'PATCH', headers: {'Content-Type': 'application/json'},
-  body: JSON.stringify(body),
-});
+/* nav labels + icons */
+const NAV = {now:['play','Now playing'], discovery:['compass','Discovery'],
+             settings:['sliders','Settings']};
+for (const b of $('nav').querySelectorAll('button')){
+  const [ic, label] = NAV[b.dataset.view];
+  b.innerHTML = icon(ic) + `<span>${label}</span>`
+    + (b.dataset.view === 'discovery' ? '<span class="badge hidden" id="nav-badge"></span>' : '');
+}
+$('art-ph').innerHTML = icon('note');
+$('mini-ph').innerHTML = icon('note');
+$('btn-skip').innerHTML = icon('skip');
+$('btn-break').innerHTML = icon('mic');
+$('theme-btn').innerHTML = icon('theme');
 
-/* theme: auto → light → dark */
+/* every request goes through here so the token is attached in one place */
+async function api(path, opts){
+  const o = Object.assign({}, opts);
+  o.headers = Object.assign({}, o.headers);
+  if (token) o.headers['Authorization'] = 'Bearer ' + token;
+  const r = await fetch(path, o);
+  if (r.status === 401 && !path.startsWith('/auth/')){
+    lock();                       // and stop the caller rendering an error body
+    throw new Error('unauthorized');
+  }
+  return r;
+}
+const get = path => api(path);
+const post = (path, body) => api(path, {method:'POST',
+  headers: body ? {'Content-Type':'application/json'} : undefined,
+  body: body ? JSON.stringify(body) : undefined});
+const patch = (path, body) => api(path, {method:'PATCH',
+  headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+
+/* ── navigation ── */
+$('nav').addEventListener('click', e => {
+  const b = e.target.closest('button[data-view]');
+  if (b) show(b.dataset.view);
+});
+function show(v){
+  view = v;
+  for (const el of document.querySelectorAll('.view')) el.classList.add('hidden');
+  $('view-' + v).classList.remove('hidden');
+  for (const b of $('nav').querySelectorAll('button')) b.classList.toggle('on', b.dataset.view === v);
+  if (v === 'settings') buildSettings();
+  if (v === 'discovery') loadDiscovery();
+  window.scrollTo({top:0});
+}
+
+/* ── login ── */
+function lock(){
+  token = ''; localStorage.removeItem('token');
+  $('gate').classList.remove('hidden'); $('app').classList.add('hidden'); $('login-pw').focus();
+}
+function unlock(){
+  $('gate').classList.add('hidden'); $('app').classList.remove('hidden'); refresh();
+}
+async function doLogin(ev){
+  ev.preventDefault();
+  const r = await post('/auth/login', {password: $('login-pw').value});
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok){
+    $('login-err').textContent = d.detail || 'wrong password';
+    $('login-err').classList.remove('hidden'); return;
+  }
+  token = d.token; localStorage.setItem('token', token);
+  $('login-pw').value = ''; $('login-err').classList.add('hidden');
+  unlock();
+}
+async function savePassword(remove){
+  const body = {new_password: remove ? '' : $('new_password').value};
+  if (!remove && !body.new_password) return;
+  if (remove && !confirm('Remove the password? Anyone on your network will be able to '
+      + 'control the station.')) return;
+  if ($('current_password').value) body.current_password = $('current_password').value;
+  const r = await post('/auth/password', body);
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok){
+    $('p-state').innerHTML = '<span class="warn">' + esc(d.detail || 'could not save') + '</span>';
+    return;
+  }
+  token = d.token || '';
+  if (token) localStorage.setItem('token', token); else localStorage.removeItem('token');
+  $('new_password').value = ''; $('current_password').value = '';
+  $('pw-saved').classList.remove('hidden');
+  setTimeout(() => $('pw-saved').classList.add('hidden'), 2500);
+}
+
+/* ── theme ── */
 function cycleTheme(){
-  const order = ['auto', 'light', 'dark'];
+  const order = ['auto','light','dark'];
   const now = localStorage.getItem('theme') || 'auto';
-  const next = order[(order.indexOf(now) + 1) % 3];
-  localStorage.setItem('theme', next);
+  localStorage.setItem('theme', order[(order.indexOf(now) + 1) % 3]);
   applyTheme();
 }
 function applyTheme(){
   const t = localStorage.getItem('theme') || 'auto';
   if (t === 'auto') document.documentElement.removeAttribute('data-theme');
   else document.documentElement.setAttribute('data-theme', t);
-  $('theme-btn').textContent = t === 'auto' ? 'Theme: auto'
-    : (t === 'light' ? 'Theme: day' : 'Theme: night');
+  $('theme-btn').title = 'Theme: ' + (t === 'auto' ? 'auto' : (t === 'light' ? 'day' : 'night'));
 }
 applyTheme();
 
-function togglePanel(id){ $(id).classList.toggle('hidden');
-  if (id === 'settings') buildSettings(); }
-
 /* ── linking ── */
+$('svc-choice').addEventListener('click', e => {
+  const b = e.target.closest('button[data-svc]');
+  if (!b) return;
+  svc = b.dataset.svc;
+  for (const x of $('svc-choice').children) x.classList.toggle('on', x === b);
+  patch('/config', {'source.provider': svc});
+});
 async function startLink(){
   $('btn-link').disabled = true;
-  const r = await post('/tidal/link');
-  if (!r.ok){ $('t-state').textContent = 'could not start linking'; $('btn-link').disabled = false; return; }
+  const r = await post(svc === 'spotify' ? '/spotify/link' : '/tidal/link');
+  if (!r.ok){
+    $('t-state').innerHTML = '<span class="warn">could not start linking</span>';
+    $('btn-link').disabled = false; return;
+  }
   const d = await r.json();
   $('t-url').href = d.url; $('t-url').textContent = d.url;
   $('t-link').classList.remove('hidden');
+  $('code-box').classList.toggle('hidden', !d.needs_code);
   $('t-state').innerHTML = '<span class="warn">waiting for approval…</span>';
-  if (!linkPolling){ linkPolling = true; pollLink(); }
+  if (!d.needs_code && !linkPolling){ linkPolling = true; pollLink(); }
+}
+async function submitCode(){
+  const r = await post('/spotify/link/code', {code: $('link-code').value.trim()});
+  const d = await r.json().catch(() => ({}));
+  if (r.ok && d.status === 'linked') linkDone();
+  else $('t-state').innerHTML = '<span class="warn">'
+    + esc(d.detail || d.error || 'failed') + '</span>';
 }
 async function pollLink(){
-  const d = await (await fetch('/tidal/status')).json();
-  if (d.linked || d.status === 'linked'){
-    linkPolling = false;
-    $('t-link').classList.add('hidden');
-    $('t-state').innerHTML = '<span class="ok">linked — syncing your library…</span>';
-    await post('/tidal/sync'); refresh(); return;
-  }
+  const d = await (await get('/tidal/status')).json().catch(() => ({}));
+  if (d.linked || d.status === 'linked'){ linkPolling = false; linkDone(); return; }
   if (d.status === 'failed'){
     linkPolling = false;
     $('t-state').innerHTML = '<span class="warn">failed: ' + esc(d.error || '') + '</span>';
@@ -290,168 +582,331 @@ async function pollLink(){
   }
   setTimeout(pollLink, 3000);
 }
+async function linkDone(){
+  $('t-link').classList.add('hidden');
+  $('t-state').innerHTML = '<span class="ok">linked — importing your library…</span>';
+  await post('/tidal/sync'); refresh();
+}
 async function syncNow(){
   $('btn-sync').disabled = true; $('btn-sync').textContent = 'Syncing…';
   await post('/tidal/sync');
-  setTimeout(() => { $('btn-sync').disabled = false; $('btn-sync').textContent = 'Sync library'; }, 8000);
-}
-async function saveKeys(){
-  const body = {};
-  for (const k of ['anthropic_api_key','openai_api_key'])
-    if ($(k).value.trim()) body[k] = $(k).value.trim();
-  if (Object.keys(body).length){
-    await post('/settings', body);
-    $('anthropic_api_key').value = ''; $('openai_api_key').value = '';
-    $('keys-saved').classList.remove('hidden');
-    setTimeout(() => $('keys-saved').classList.add('hidden'), 2500);
-  }
-  refresh();
+  setTimeout(() => { $('btn-sync').disabled = false;
+                     $('btn-sync').textContent = 'Sync library'; }, 8000);
 }
 
-/* ── settings, rendered from the schema the server publishes ── */
-async function buildSettings(){
-  if (settingsBuilt) return;
-  const cfg = await (await fetch('/config')).json();
-  const body = $('settings-body');
-  body.innerHTML = cfg.groups.map(g => `
-    <div class="group">
-      <h4>${esc(g.icon || '')} ${esc(g.group)}</h4>
-      ${g.settings.map(s => field(s)).join('')}
-    </div>`).join('');
-  body.querySelectorAll('[data-key]').forEach(el => {
-    const evt = el.type === 'range' ? 'change' : (el.tagName === 'SELECT' ? 'change' : 'blur');
-    el.addEventListener(evt, () => saveField(el));
-    if (el.type === 'range')
-      el.addEventListener('input', () => {
-        const out = el.parentElement.querySelector('.val');
-        if (out) out.textContent = el.value;
-      });
-    if (el.type === 'checkbox') el.addEventListener('change', () => saveField(el));
+/* ── discovery ── */
+async function loadDiscovery(){
+  await loadSchema();
+  const d = await (await get('/discovery')).json().catch(() => null);
+  if (!d) return;
+  const label = {ai:'AI suggestions', radio:'artist & track radio', mix:'your mixes',
+                 similar:'similar artists'};
+  const parts = Object.entries(d.by_origin || {}).filter(([k]) => k !== 'library')
+    .map(([k, v]) => `${v} from ${label[k] || k}`);
+  $('disc-stats').innerHTML =
+    `<b>${d.pool || 0}</b> found for you · <b>${d.library || 0}</b> from your library`
+    + (parts.length ? `<div class="help">${esc(parts.join(' · '))}</div>` : '');
+  $('disc-note').textContent = d.note || '';
+  $('disc-recent').innerHTML = (d.recent || []).map(r => `
+    <li>${r.cover_url ? `<img class="thumb" src="${esc(r.cover_url)}" alt="">`
+                      : '<div class="thumb"></div>'}
+      <div><div class="l-title">${esc(r.title)}</div>
+           <div class="l-sub">${esc(r.artist)}</div></div>
+      <span class="tag">${esc(r.origin)}</span></li>`).join('')
+    || '<li class="l-sub">Nothing yet — the station looks in the background.</li>';
+  $('balance-field').innerHTML = field(findSetting('engine.discovery_ratio'))
+                               + field(findSetting('discovery.deep_cut_share'));
+  bindFields($('balance-field'));
+  applyVisibility($('balance-field'));
+}
+async function discoverNow(){
+  $('btn-discover').disabled = true;
+  const r = await post('/discovery/run');
+  $('disc-started').classList.toggle('hidden', !r.ok);
+  setTimeout(() => { $('btn-discover').disabled = false;
+                     $('disc-started').classList.add('hidden'); loadDiscovery(); }, 12000);
+}
+
+/* ── settings ── */
+async function loadSchema(){
+  if (!schema) schema = (await (await get('/config')).json()).groups;
+  return schema;
+}
+function findSetting(key){
+  for (const g of schema || []) for (const s of g.settings) if (s.key === key) return s;
+  return null;
+}
+function valueOf(key){
+  const s = findSetting(key);
+  return s ? s.value : undefined;
+}
+/* a field is shown only when every one of its conditions holds */
+function visible(s){
+  for (const c of s.show_if || []){
+    const v = valueOf(c.key);
+    if (c.truthy && !(v === true || v === 'true' || (v && v !== '0'))) return false;
+    if (c.in && !c.in.includes(String(v))) return false;
+  }
+  return true;
+}
+function applyVisibility(root){
+  (root || document).querySelectorAll('[data-key]').forEach(el => {
+    const s = findSetting(el.dataset.key);
+    const wrap = el.closest('.field');
+    if (s && wrap) wrap.classList.toggle('hidden', !visible(s));
   });
+}
+async function buildSettings(){
+  await loadSchema();
+  if (settingsBuilt){ applyVisibility(); return; }
+  /* "Setup" is the first sub-tab, then one per schema group */
+  $('chips').innerHTML =
+    `<button data-grp="setup" class="on">${icon('wand')}Setup</button>`
+    + schema.map((g, i) =>
+        `<button data-grp="${i}">${icon(g.icon)}${esc(g.group)}</button>`).join('');
+  $('settings-body').innerHTML = schema.map((g, i) =>
+    `<div class="grp" data-grp="${i}"><div class="card">
+       ${g.settings.map(s => field(s)).join('')}</div></div>`).join('');
+  $('chips').addEventListener('click', e => {
+    const b = e.target.closest('button[data-grp]');
+    if (!b) return;
+    for (const x of $('chips').children) x.classList.toggle('on', x === b);
+    const want = b.dataset.grp;
+    $('grp-setup').classList.toggle('on', want === 'setup');
+    for (const p of $('settings-body').children) p.classList.toggle('on', p.dataset.grp === want);
+    $('set-lede').textContent = want === 'setup'
+      ? 'Link your music, add an AI key, choose how adventurous the station is.'
+      : 'Changes apply immediately unless marked otherwise.';
+  });
+  bindFields($('settings-body'));
+  await buildWizard();
+  applyVisibility();
   settingsBuilt = true;
 }
 function field(s){
+  if (!s) return '';
   const id = 'set-' + s.key.replace(/\./g, '-');
   const v = s.value == null ? '' : s.value;
   const help = s.help ? `<p class="help">${esc(s.help)}</p>` : '';
-  const live = s.live === false ? ' <span class="help">(restart required)</span>' : '';
-  let control;
-  if (s.control === 'toggle'){
-    control = `<div class="row"><input type="checkbox" id="${id}" data-key="${s.key}"
-        ${v ? 'checked' : ''}></div>`;
-  } else if (s.control === 'slider'){
-    control = `<div class="row">
-        <input type="range" id="${id}" data-key="${s.key}" min="${s.min}" max="${s.max}"
-               step="${s.step}" value="${esc(v)}">
-        <span class="val">${esc(v)}</span></div>`;
-  } else if (s.control === 'number'){
-    control = `<input type="number" id="${id}" data-key="${s.key}" min="${s.min ?? ''}"
-        max="${s.max ?? ''}" step="${s.step ?? 1}" value="${esc(v)}">`;
-  } else if (s.control === 'select'){
+  const live = s.live === false
+    ? ' <span class="help" style="display:inline">(restart required)</span>' : '';
+  let c;
+  if (s.control === 'toggle')
+    c = `<div class="row"><input type="checkbox" id="${id}" data-key="${s.key}" ${v ? 'checked' : ''}></div>`;
+  else if (s.control === 'slider')
+    c = `<div class="row"><input type="range" id="${id}" data-key="${s.key}" min="${s.min}"
+         max="${s.max}" step="${s.step}" value="${esc(v)}"><span class="val">${esc(v)}</span></div>`;
+  else if (s.control === 'number')
+    c = `<input type="number" id="${id}" data-key="${s.key}" min="${s.min ?? ''}"
+         max="${s.max ?? ''}" step="${s.step ?? 1}" value="${esc(v)}">`;
+  else if (s.control === 'select'){
     const opts = (s.options || []).map(o =>
-      `<option value="${esc(o.value)}"${String(o.value) === String(v) ? ' selected' : ''}>
-         ${esc(o.label)}</option>`).join('');
-    // only offer a "custom" row for a real value the option list doesn't cover
-    const custom = s.allow_custom && v !== ''
-        && !(s.options || []).some(o => String(o.value) === String(v))
+      `<option value="${esc(o.value)}"${String(o.value) === String(v) ? ' selected' : ''}>${esc(o.label)}</option>`).join('');
+    const custom = s.allow_custom && v !== '' && !(s.options || []).some(o => String(o.value) === String(v))
       ? `<option value="${esc(v)}" selected>${esc(v)} (custom)</option>` : '';
-    control = `<select id="${id}" data-key="${s.key}">${opts}${custom}</select>`;
-  } else if (s.control === 'textarea'){
-    control = `<textarea id="${id}" data-key="${s.key}">${esc(v)}</textarea>`;
-  } else if (s.control === 'list'){
-    control = `<textarea id="${id}" data-key="${s.key}"
-        >${esc(Array.isArray(v) ? v.join('\n') : v)}</textarea>`;
-  } else {
-    control = `<input type="text" id="${id}" data-key="${s.key}" value="${esc(v)}">`;
+    c = `<select id="${id}" data-key="${s.key}">${opts}${custom}</select>`;
   }
-  return `<div class="field"><label for="${id}">${esc(s.label)}${live}</label>${control}${help}</div>`;
+  else if (s.control === 'textarea') c = `<textarea id="${id}" data-key="${s.key}">${esc(v)}</textarea>`;
+  else if (s.control === 'list')
+    c = `<textarea id="${id}" data-key="${s.key}">${esc(Array.isArray(v) ? v.join('\n') : v)}</textarea>`;
+  else c = `<input type="text" id="${id}" data-key="${s.key}" value="${esc(v)}">`;
+  if (s.preview === 'voice')
+    c = `<div class="row">${c}<button class="btn" type="button"
+         onclick="previewVoice('${id}')">${icon('play')}Preview</button></div>`;
+  return `<div class="field"><label for="${id}">${esc(s.label)}${live}</label>${c}${help}</div>`;
+}
+/* audition a Piper voice without committing to it */
+let previewAudio = null;
+async function previewVoice(fieldId){
+  const btn = event.target.closest('button');
+  btn.disabled = true;
+  try {
+    const r = await post('/voices/preview', {voice: $(fieldId).value});
+    if (!r.ok) throw new Error('render failed');
+    if (previewAudio) previewAudio.pause();
+    previewAudio = new Audio(URL.createObjectURL(await r.blob()));
+    previewAudio.play();
+  } catch { btn.insertAdjacentHTML('afterend',
+      '<span class="warn help" style="display:inline"> could not play</span>');
+    setTimeout(() => btn.nextElementSibling?.remove(), 3000);
+  } finally { btn.disabled = false; }
+}
+
+function bindFields(root){
+  root.querySelectorAll('[data-key]').forEach(el => {
+    if (el.dataset.bound) return;
+    el.dataset.bound = '1';
+    const evt = (el.type === 'range' || el.type === 'checkbox' || el.tagName === 'SELECT')
+      ? 'change' : 'blur';
+    el.addEventListener(evt, () => saveField(el));
+    if (el.type === 'range') el.addEventListener('input', () => {
+      const o = el.parentElement.querySelector('.val'); if (o) o.textContent = el.value;
+    });
+  });
 }
 async function saveField(el){
-  const key = el.dataset.key;
   const value = el.type === 'checkbox' ? el.checked : el.value;
-  const r = await patch('/config', {[key]: value});
+  const r = await patch('/config', {[el.dataset.key]: value});
   const label = el.closest('.field').querySelector('label');
   if (!r.ok){
     const err = await r.json().catch(() => ({}));
     label.insertAdjacentHTML('beforeend',
-      ` <span class="warn help">${esc(err.detail || 'rejected')}</span>`);
+      ` <span class="warn help" style="display:inline">${esc(err.detail || 'rejected')}</span>`);
     setTimeout(() => label.querySelector('.warn')?.remove(), 4000);
     return;
   }
   label.insertAdjacentHTML('beforeend', ' <span class="saved">saved</span>');
-  setTimeout(() => label.querySelector('.saved')?.remove(), 1600);
+  setTimeout(() => label.querySelector('.saved')?.remove(), 1500);
+  const s = findSetting(el.dataset.key);
+  if (s) s.value = value;
+  applyVisibility();          /* a change here may reveal or hide other fields */
+}
+
+/* ── wizard ── */
+async function buildWizard(){
+  await loadSchema();
+  const prov = valueOf('dj.provider');
+  if (['anthropic','openai','template'].includes(prov)) $('wiz-provider').value = prov;
+  const src = valueOf('source.provider');
+  if (src){ svc = src;
+    for (const x of $('svc-choice').children) x.classList.toggle('on', x.dataset.svc === src); }
+  wizProvider();
+  $('wiz-balance').innerHTML = field(findSetting('engine.discovery_ratio'))
+                             + field(findSetting('discovery.deep_cuts'))
+                             + field(findSetting('discovery.deep_cut_share'));
+  bindFields($('grp-setup'));
+  applyVisibility($('grp-setup'));
+  wizShow();
+}
+function fillModels(){
+  const p = $('wiz-provider').value;
+  const dj = findSetting(p === 'openai' ? 'dj.openai.model' : 'dj.llm.model');
+  const cheap = findSetting(p === 'openai' ? 'discovery.ai_model_openai'
+                                           : 'discovery.ai_model_anthropic');
+  const opts = s => (s?.options || []).map(o =>
+    `<option value="${esc(o.value)}"${String(o.value) === String(s.value) ? ' selected' : ''}>${esc(o.label)}</option>`).join('');
+  $('wiz-model').innerHTML = opts(dj);
+  $('wiz-model').dataset.for = dj ? dj.key : '';
+  $('wiz-model-cheap').innerHTML = opts(cheap);
+  $('wiz-model-cheap').dataset.for = cheap ? cheap.key : '';
+}
+function wizProvider(){
+  const none = $('wiz-provider').value === 'template';
+  $('wiz-key-box').classList.toggle('hidden', none);
+  if (!none) fillModels();
+}
+async function saveWizKeys(){
+  const p = $('wiz-provider').value;
+  await patch('/config', {'dj.provider': p,
+                          'discovery.ai_provider': p === 'template' ? 'auto' : p});
+  if (p !== 'template'){
+    if ($('wiz-key').value.trim())
+      await post('/settings', {[p === 'openai' ? 'openai_api_key' : 'anthropic_api_key']:
+                               $('wiz-key').value.trim()});
+    const cfg = {};
+    if ($('wiz-model').dataset.for) cfg[$('wiz-model').dataset.for] = $('wiz-model').value;
+    if ($('wiz-model-cheap').dataset.for) cfg[$('wiz-model-cheap').dataset.for] = $('wiz-model-cheap').value;
+    if (Object.keys(cfg).length) await patch('/config', cfg);
+    $('wiz-key').value = '';
+  }
+  schema = null; settingsBuilt = false;      /* values changed — rebuild lazily */
+  $('wiz-key-saved').classList.remove('hidden');
+  setTimeout(() => $('wiz-key-saved').classList.add('hidden'), 2500);
+  refresh();
+}
+function wizStep(d){
+  if (step + d < 1) return;
+  if (step + d > 3){ show('now'); return; }
+  step += d; wizShow();
+}
+function wizShow(){
+  for (let i = 1; i <= 3; i++) $('wiz-' + i).classList.toggle('hidden', i !== step);
+  [...$('steps').children].forEach((el, i) => el.classList.toggle('on', i < step));
+  $('wiz-back').style.visibility = step === 1 ? 'hidden' : 'visible';
+  $('wiz-next').textContent = step === 3 ? 'Done — start listening' : 'Next';
 }
 
 /* ── live status ── */
 async function refresh(){
   let s, cfg;
   try {
-    s = await (await fetch('/status')).json();
-    cfg = await (await fetch('/settings')).json();
+    s = await (await get('/status')).json();
+    cfg = await (await get('/settings')).json();
   } catch { return; }
 
   $('tagline').textContent = s.tagline || '';
   const live = !!s.now_playing && !s.error;
   $('dot').className = 'dot' + (live ? ' live' : '');
-  $('onair-text').innerHTML = live ? '<b>On air</b>' : (s.error ? 'off air' : 'standby');
+  $('onair-text').textContent = live ? 'on air' : (s.error ? 'off air' : 'standby');
+  $('rail-stats').innerHTML = `${s.library_tracks || 0} yours · ${s.discovery_tracks || 0} found<br>`
+    + `cache ${s.cache_gb || 0} GB · ${s.liquidsoap ? 'pipeline up' : 'pipeline down'}`;
+  const navDisc = $('nav').querySelector('[data-view="discovery"]');
+  if (navDisc) navDisc.classList.toggle('hidden', s.discovery_supported === false);
+  const badge = $('nav-badge');
+  if (badge && s.discovery_tracks){ badge.textContent = s.discovery_tracks;
+                                    badge.classList.remove('hidden'); }
 
   const problem = s.error || s.tidal_error;
   $('notice').classList.toggle('hidden', !problem);
-  if (problem) $('notice').innerHTML = '<b>' + (s.error ? 'Not playing: ' : 'Tidal: ')
+  if (problem) $('notice').innerHTML = '<b>' + (s.error ? 'Not playing: ' : 'Music service: ')
     + '</b>' + esc(problem)
-    + (s.throttled_for ? ` <span class="help">retrying in ${s.throttled_for}s</span>` : '')
-    + '<p class="help" style="margin:6px 0 0">Run <code>tidal-radio diagnose</code> in the container for detail.</p>';
+    + (s.throttled_for ? ` <span class="help" style="display:inline">retrying in ${s.throttled_for}s</span>` : '');
 
-  const np = s.now_playing;
-  const isBreak = np && np.kind === 'break';
+  const np = s.now_playing, isBreak = np && np.kind === 'break';
   $('eyebrow').textContent = isBreak ? 'Station break'
     : (np ? 'Now playing' : (s.tidal_linked ? 'Warming up' : 'Not set up yet'));
-  $('track').textContent = np ? (isBreak ? 'Your host' : np.title) : '—';
-  $('artist').textContent = np && !isBreak ? np.artist : '';
-  $('album').textContent = np && np.album && !isBreak ? np.album : '';
+  $('np-title').textContent = np ? (isBreak ? 'Your host' : np.title) : '—';
+  $('np-artist').textContent = np && !isBreak ? np.artist : '';
+  $('np-album').textContent = np && np.album && !isBreak ? np.album : '';
+  $('mini-title').textContent = np ? (isBreak ? 'DJ break' : np.title) : '—';
+  $('mini-artist').textContent = np && !isBreak ? np.artist : '';
 
   const art = np && np.cover_url;
   if (art !== lastArt){
     lastArt = art;
-    if (art){ $('art').src = art; $('art').hidden = false; $('art-ph').classList.add('hidden'); }
-    else { $('art').hidden = true; $('art-ph').classList.remove('hidden');
-           $('art-ph').textContent = isBreak ? '🎙' : '♪'; }
+    for (const [img, ph] of [['art','art-ph'], ['mini-art','mini-ph']]){
+      if (art){ $(img).src = art; $(img).classList.remove('hidden'); $(ph).classList.add('hidden'); }
+      else { $(img).classList.add('hidden'); $(ph).classList.remove('hidden'); }
+    }
   }
   const bits = [];
   if (np && np.bpm) bits.push(Math.round(np.bpm) + ' BPM');
   if (np && np.camelot) bits.push('Key ' + np.camelot);
-  if (s.show && s.show.name) bits.push(s.show.name);
+  if (s.show?.name) bits.push(s.show.name);
   if (s.quality) bits.push(s.quality);
-  $('meta').innerHTML = bits.map(b => `<span>${esc(b)}</span>`).join('');
+  $('meta').innerHTML = bits.map(b => `<span>${esc(b)}</span>`).join('')
+    + (np && np.origin && np.origin !== 'library' ? '<span class="new">new to you</span>' : '');
+
+  $('player-meta').textContent = [np && np.bpm ? Math.round(np.bpm) + ' BPM' : '',
+     np && np.camelot ? np.camelot : '', s.quality || ''].filter(Boolean).join(' · ');
 
   $('history').innerHTML = (s.recent || []).map(r => `
     <li>${r.cover_url ? `<img class="thumb" src="${esc(r.cover_url)}" alt="">`
                       : '<div class="thumb"></div>'}
-      <div><div class="h-title">${esc(r.title)}</div>
-           <div class="h-artist">${esc(r.artist)}</div></div></li>`).join('')
-    || '<li class="h-artist">Nothing played yet.</li>';
+      <div><div class="l-title">${esc(r.title)}</div>
+           <div class="l-sub">${esc(r.artist)}</div></div></li>`).join('')
+    || '<li class="l-sub">Nothing played yet.</li>';
 
-  /* setup card auto-opens until the station can actually play */
-  if (!s.tidal_linked) $('setup').classList.remove('hidden');
-  $('t-icon').textContent = s.tidal_linked ? '●' : '○';
   if (!linkPolling)
-    $('t-state').textContent = s.tidal_linked
-      ? `${s.library_tracks || 0} tracks in your library` : 'not linked yet';
-  $('btn-link').textContent = s.tidal_linked ? 'Re-link account' : 'Link Tidal account';
+    $('t-state').textContent = s.tidal_linked ? `linked · ${s.library_tracks || 0} tracks`
+                                              : 'not linked yet';
+  $('btn-link').textContent = s.tidal_linked ? 'Re-link account' : 'Link account';
   $('btn-link').disabled = false;
   $('btn-sync').classList.toggle('hidden', !s.tidal_linked);
+  $('p-state').textContent = cfg.password_set
+    ? 'A password is set. Change or remove it below.'
+    : 'Protect this page so only you can control the station.';
 
-  const hasKey = cfg.anthropic_api_key_set || cfg.openai_api_key_set;
-  $('k-icon').textContent = hasKey ? '●' : '○';
-  $('k-state').textContent = 'writing with ' + (s.dj_provider || 'templates');
-  for (const k of ['anthropic_api_key','openai_api_key'])
-    $(k).placeholder = cfg[k + '_set']
-      ? (cfg[k + '_from_env'] ? 'set via secrets.env' : 'saved — type to replace')
-      : (k.startsWith('anthropic') ? 'sk-ant-…' : 'sk-…');
-
-  $('foot-left').textContent = `${s.library_tracks || 0} tracks · cache ${s.cache_gb || 0} GB`;
-  $('foot-right').textContent = s.liquidsoap ? 'audio pipeline up' : 'audio pipeline down';
+  /* first run: land in the wizard rather than an empty dashboard */
+  if (!s.tidal_linked && view === 'now' && !window.__wiz){ window.__wiz = 1; show('settings'); }
 }
-refresh(); setInterval(refresh, 10000);
+
+async function boot(){
+  let st = {};
+  try { st = await (await get('/auth/status')).json(); } catch {}
+  if (st.enabled && st.required) lock(); else unlock();
+}
+boot();
+setInterval(() => { if (!$('app').classList.contains('hidden')) refresh(); }, 10000);
 </script>
 </body></html>

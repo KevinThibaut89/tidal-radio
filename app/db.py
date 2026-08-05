@@ -1,11 +1,14 @@
+import logging
 import sqlite3
 import threading
 import time
 from pathlib import Path
 
+log = logging.getLogger(__name__)
+
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS tracks (
-    id          INTEGER PRIMARY KEY,          -- Tidal track id
+    id          TEXT PRIMARY KEY,             -- numeric for Tidal, base62 for Spotify
     title       TEXT NOT NULL,
     artist      TEXT NOT NULL,
     album       TEXT,
@@ -14,7 +17,7 @@ CREATE TABLE IF NOT EXISTS tracks (
     added_at    REAL
 );
 CREATE TABLE IF NOT EXISTS features (
-    track_id    INTEGER PRIMARY KEY REFERENCES tracks(id),
+    track_id    TEXT PRIMARY KEY REFERENCES tracks(id),
     bpm         REAL,
     key_idx     INTEGER,                      -- 0=C .. 11=B
     mode        INTEGER,                      -- 1=major 0=minor
@@ -24,7 +27,7 @@ CREATE TABLE IF NOT EXISTS features (
 );
 CREATE TABLE IF NOT EXISTS history (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    track_id    INTEGER REFERENCES tracks(id),
+    track_id    TEXT REFERENCES tracks(id),
     played_at   REAL,
     show_id     TEXT
 );
@@ -49,7 +52,52 @@ class Database:
                     self._conn.execute(f"ALTER TABLE tracks ADD COLUMN {column} {decl}")
                 except sqlite3.OperationalError:
                     pass          # already present
+            self._widen_ids()
             self._conn.commit()
+
+    def _widen_ids(self):
+        """Track ids must be TEXT: Tidal's are numeric but Spotify's are base62.
+
+        SQLite can't ALTER a PRIMARY KEY, and an INTEGER PRIMARY KEY is a rowid
+        alias that rejects a string outright, so the tables are rebuilt once.
+        Existing integer ids survive as their text form.
+        """
+        row = self._conn.execute(
+            "SELECT type FROM pragma_table_info('tracks') WHERE name='id'").fetchone()
+        if row is None or (row[0] or "").upper() == "TEXT":
+            return                                   # fresh db, or already migrated
+        self._conn.executescript("""
+            PRAGMA foreign_keys=off;
+            CREATE TABLE tracks_new (
+                id TEXT PRIMARY KEY, title TEXT NOT NULL, artist TEXT NOT NULL,
+                album TEXT, duration INTEGER, favorite INTEGER DEFAULT 1,
+                added_at REAL, cover_url TEXT, source TEXT DEFAULT 'tidal',
+                origin TEXT DEFAULT 'library');
+            INSERT INTO tracks_new SELECT CAST(id AS TEXT), title, artist, album,
+                duration, favorite, added_at, cover_url, source, origin FROM tracks;
+            DROP TABLE tracks;
+            ALTER TABLE tracks_new RENAME TO tracks;
+
+            CREATE TABLE features_new (
+                track_id TEXT PRIMARY KEY REFERENCES tracks(id), bpm REAL,
+                key_idx INTEGER, mode INTEGER, camelot TEXT, energy REAL,
+                analyzed_at REAL);
+            INSERT INTO features_new SELECT CAST(track_id AS TEXT), bpm, key_idx,
+                mode, camelot, energy, analyzed_at FROM features;
+            DROP TABLE features;
+            ALTER TABLE features_new RENAME TO features;
+
+            CREATE TABLE history_new (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, track_id TEXT REFERENCES tracks(id),
+                played_at REAL, show_id TEXT);
+            INSERT INTO history_new (id, track_id, played_at, show_id)
+                SELECT id, CAST(track_id AS TEXT), played_at, show_id FROM history;
+            DROP TABLE history;
+            ALTER TABLE history_new RENAME TO history;
+            CREATE INDEX IF NOT EXISTS idx_history_track ON history(track_id, played_at);
+            PRAGMA foreign_keys=on;
+        """)
+        log.info("Migrated track ids to TEXT so non-numeric sources can be stored")
 
     def execute(self, sql: str, params=()):
         with self._lock:
@@ -62,7 +110,7 @@ class Database:
             return self._conn.execute(sql, params).fetchall()
 
     # ── tracks ────────────────────────────────────────────────────────────
-    def upsert_track(self, tid: int, title: str, artist: str, album: str | None,
+    def upsert_track(self, tid: str, title: str, artist: str, album: str | None,
                      duration: int | None, favorite: bool = True,
                      cover_url: str | None = None, source: str = "tidal",
                      origin: str = "library"):
@@ -90,7 +138,7 @@ class Database:
             (limit,),
         )
 
-    def save_features(self, track_id: int, bpm: float, key_idx: int, mode: int,
+    def save_features(self, track_id: str, bpm: float, key_idx: int, mode: int,
                       camelot: str, energy: float):
         self.execute(
             """INSERT INTO features (track_id, bpm, key_idx, mode, camelot, energy, analyzed_at)
@@ -110,7 +158,7 @@ class Database:
         )
 
     # ── history ───────────────────────────────────────────────────────────
-    def record_play(self, track_id: int, show_id: str | None):
+    def record_play(self, track_id: str, show_id: str | None):
         self.execute("INSERT INTO history (track_id, played_at, show_id) VALUES (?,?,?)",
                      (track_id, time.time(), show_id))
 
@@ -120,11 +168,11 @@ class Database:
                JOIN tracks t ON t.id = h.track_id
                ORDER BY h.played_at DESC LIMIT ?""", (n,))
 
-    def last_played_at(self, track_id: int) -> float | None:
+    def last_played_at(self, track_id: str) -> float | None:
         rows = self.query("SELECT MAX(played_at) AS ts FROM history WHERE track_id=?",
                           (track_id,))
         return rows[0]["ts"] if rows and rows[0]["ts"] else None
 
-    def play_count(self, track_id: int) -> int:
+    def play_count(self, track_id: str) -> int:
         return self.query("SELECT COUNT(*) AS c FROM history WHERE track_id=?",
                           (track_id,))[0]["c"]

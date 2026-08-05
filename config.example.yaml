@@ -33,6 +33,8 @@ discovery:
   ai_provider: auto                   # auto | anthropic | openai
   ai_model_anthropic: claude-haiku-4-5
   ai_model_openai: gpt-4.1-nano
+  deep_cuts: true                     # also dig out unheard tracks by artists you love
+  deep_cut_share: 0.3                 # ...as this share of AI suggestions
   ai_suggestions: 25                  # asked for per run
 
 cache:

@@ -17,6 +17,8 @@ log = logging.getLogger(__name__)
 class TidalClient:
     """Owns the Tidal session, library sync, and a bounded local audio cache."""
 
+    name = "tidal"
+
     # Highest → lowest. A device-link (non-PKCE) token is only authorised for
     # HIGH and below; asking for LOSSLESS with one yields 401 on the stream
     # endpoints, so we walk down this ladder until something plays.
