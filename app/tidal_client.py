@@ -1,6 +1,7 @@
 import logging
 import subprocess
 import tempfile
+import threading
 import time
 from pathlib import Path
 
@@ -19,6 +20,8 @@ class TidalClient:
     def __init__(self, cfg: Config):
         self.cfg = cfg
         self.session = tidalapi.Session()
+        self._link: dict | None = None       # device-link state for the UI
+        self._link_lock = threading.Lock()
         quality = cfg.get("tidal.quality", "LOSSLESS").upper()
         try:
             self.session.audio_quality = {
@@ -93,6 +96,55 @@ class TidalClient:
         except Exception as e:
             log.warning("Tidal login check failed: %s", e)
             return False
+
+    # ── device link driven from the control UI ───────────────────────────
+    def start_device_link(self) -> dict:
+        """Begin a device-link login and return the URL for the user to open.
+
+        The wait runs in a background thread so the HTTP request returns at
+        once; poll link_status() for the outcome.
+        """
+        with self._link_lock:
+            if self._link and self._link.get("status") == "pending":
+                return self._link                      # reuse the live link
+            self.session = tidalapi.Session()          # always start clean
+            login, future = self.session.login_oauth()
+            url = login.verification_uri_complete
+            if not url.startswith("http"):
+                url = f"https://{url}"
+            self._link = {"status": "pending", "url": url,
+                          "expires_in": getattr(login, "expires_in", None)}
+
+        def _wait():
+            try:
+                future.result()
+                if self._checked_login():
+                    self.session.save_session_to_file(self.cfg.session_path)
+                    log.info("Tidal linked from the control UI")
+                    self._set_link({"status": "linked", "url": url})
+                else:
+                    self._set_link({"status": "failed", "url": url,
+                                    "error": "login did not complete"})
+            except Exception as e:
+                log.error("Device link failed: %s", e)
+                self._set_link({"status": "failed", "url": url, "error": str(e)})
+
+        threading.Thread(target=_wait, daemon=True, name="tidal-link").start()
+        return self._link
+
+    def _set_link(self, state: dict):
+        with self._link_lock:
+            self._link = state
+
+    def link_status(self) -> dict:
+        with self._link_lock:
+            state = dict(self._link) if self._link else {"status": "idle"}
+        if state.get("status") != "pending" and self.cfg.session_path.exists():
+            state.setdefault("status", "linked")
+        return state
+
+    def is_linked(self) -> bool:
+        return self.cfg.session_path.exists()
 
     # ── library sync ──────────────────────────────────────────────────────
     def sync_favorites(self, db: Database) -> int:

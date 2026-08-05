@@ -55,11 +55,12 @@ The wizard walks you through everything:
    DHCP, unprivileged) or **Advanced settings** (pick CTID, resources, storage,
    bridge, static IP, privilege level).
 2. **Station settings** — station name, timezone, weather location, and an
-   optional `ANTHROPIC_API_KEY` for Claude-written DJ breaks (skippable; the
-   template DJ is used without it).
+   optional AI DJ key (skippable — you can paste one in the control UI later,
+   and the template DJ is used until you do).
 3. Creates + provisions the container (Ubuntu 24.04 template, icecast2,
    liquidsoap, ffmpeg, Python deps, Piper voice, systemd services).
-4. Offers to **link your Tidal account right there** — it prints a
+4. Offers to **link your Tidal account right there** (you can also do this from
+   the control UI afterwards) — it prints a
    link.tidal.com URL, you approve on your phone, it syncs your favorites and
    puts the station on the air.
 
@@ -113,16 +114,36 @@ sequenced with less precision until the background worker catches up.
 | `tidal-radio run` | Run the station (what the systemd service runs) |
 | `tidal-radio status` | Print now-playing + queue |
 
-## Control API
+## Control UI
+
+`http://<container-ip>:8080/` is the all-in-one panel: player, now playing,
+controls, **and setup**. Nothing else is needed to get the station running —
+
+- **Link your Tidal account** — click *Link Tidal account*, open the
+  link.tidal.com URL it shows, approve it, and the page picks up the result on
+  its own and starts syncing your favorites. No shell needed.
+- **AI DJ keys** — paste an **Anthropic** or **OpenAI** API key under ⚙ Setup
+  and pick a provider (`auto` uses whichever key is set). Keys are saved to
+  `/var/lib/tidal-radio/settings.json` (owner-only, `0600`) and take effect on
+  the next DJ break — no restart. Leave both empty to use the template DJ.
+  A key in `secrets.env` still works and is shown as "set via secrets.env".
+- The setup card appears automatically until Tidal is linked, and is always
+  reachable with the ⚙ Setup button.
+
+> ⚠️ The control UI has **no password**. Anyone who can reach port 8080 on your
+> network can read status and set API keys. Keep it on a trusted LAN — or set
+> `api.host: 127.0.0.1` in `config.yaml` and reach it over an SSH tunnel.
 
 | Endpoint | Description |
 |---|---|
-| `GET /` | Mini web player + now playing |
-| `GET /status` | JSON: now playing, current show, queue, stats |
+| `GET /` | Control UI (player, status, setup) |
+| `GET /status` | JSON: now playing, show, queue, DJ provider, library size |
 | `POST /skip` | Skip current track |
-| `GET /shows` | List shows (configured + generated) |
-| `POST /shows/{id}/start` | Force-start a show now |
 | `POST /break` | Trigger a DJ break after the current track |
+| `GET /shows` · `POST /shows/{id}/start` | List shows / force-start one |
+| `POST /tidal/link` · `GET /tidal/status` | Start device linking / poll it |
+| `POST /tidal/sync` | Sync favorites in the background |
+| `GET /settings` · `POST /settings` | Read (keys masked) / set DJ provider + keys |
 
 ## How the radio thinks
 
@@ -141,8 +162,9 @@ set ("Low-End Theory Tuesdays"), or sensible generated names otherwise.
 
 **The DJ** — every N tracks (and at the top of the hour) the brain writes a short
 break: back/forward announcements, time, station ID, weather from Open-Meteo, and
-headlines from your RSS feeds. If `ANTHROPIC_API_KEY` is set the script is written
-by Claude in your configured DJ persona; otherwise a template engine is used.
+headlines from your RSS feeds. With an **Anthropic** or **OpenAI** key set (in
+the control UI, or `secrets.env`) the script is written by that model in your
+configured DJ persona; otherwise a template engine is used.
 The script is voiced with Piper (fully local, no cloud dependency) and slotted
 between tracks with a crossfade.
 

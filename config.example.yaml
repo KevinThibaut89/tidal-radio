@@ -36,9 +36,14 @@ dj:
     A warm, dryly funny late-night radio host. Short sentences. Never cheesy,
     never shouty. Loves the music and drops one small detail about a track or
     artist when it's interesting.
+  # Which service writes the DJ scripts. API keys are best entered in the
+  # control UI (⚙ Setup) — they take effect immediately, no restart needed.
+  provider: auto                      # auto | anthropic | openai | template
   llm:
-    model: claude-opus-5              # used when ANTHROPIC_API_KEY is set
+    model: claude-opus-5              # model used for provider: anthropic
     max_tokens: 600
+  openai:
+    model: gpt-4o-mini                # model used for provider: openai
 
 weather:
   latitude: 50.85                     # Brussels — set to your location

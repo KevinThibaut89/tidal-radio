@@ -13,6 +13,7 @@ from .db import Database
 from .dj import DJ
 from .engine import Engine
 from .liquidsoap_client import Liquidsoap
+from .settings_store import SettingsStore
 from .shows import current_show
 from .tidal_client import TidalClient
 from .tts import TTS
@@ -26,7 +27,8 @@ class Orchestrator:
         self.db = Database(cfg.db_path)
         self.tidal = TidalClient(cfg)
         self.engine = Engine(cfg, self.db)
-        self.dj = DJ(cfg)
+        self.settings = SettingsStore(cfg.data_dir / "settings.json")
+        self.dj = DJ(cfg, self.settings)
         self.tts = TTS(cfg)
         self.ls = Liquidsoap(cfg.get("liquidsoap.host", "127.0.0.1"),
                              int(cfg.get("liquidsoap.port", 1234)))
@@ -45,7 +47,9 @@ class Orchestrator:
         return {
             "station": self.cfg.get("station.name"),
             "error": self.fatal_error,
-            "tidal_linked": self.cfg.session_path.exists(),
+            "tidal_linked": self.tidal.is_linked(),
+            "dj_provider": self.dj.active_provider(),
+            "library_tracks": self.db.query("SELECT COUNT(*) AS c FROM tracks")[0]["c"],
             "show": {"id": show.get("id"), "name": show.get("name")},
             "now_playing": self._now_playing(),
             "queue": [self._item_public(i) for i in self.pushed
@@ -60,6 +64,22 @@ class Orchestrator:
 
     def request_break(self):
         self.break_requested = True
+
+    def sync_library_async(self) -> bool:
+        """Kick off a favorites sync in the background (used after UI linking)."""
+        if not self.tidal.is_linked():
+            return False
+
+        def _run():
+            try:
+                if self.tidal.ensure_login():
+                    n = self.tidal.sync_favorites(self.db)
+                    log.info("Library sync finished: %d tracks", n)
+            except Exception:
+                log.exception("Library sync failed")
+
+        threading.Thread(target=_run, daemon=True, name="sync").start()
+        return True
 
     def force_show(self, show_id: str | None) -> bool:
         if show_id is None:

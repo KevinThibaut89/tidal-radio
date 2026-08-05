@@ -22,8 +22,30 @@ WEATHER_CODES = {
 
 
 class DJ:
-    def __init__(self, cfg: Config):
+    def __init__(self, cfg: Config, settings=None):
         self.cfg = cfg
+        self.settings = settings   # SettingsStore; keys entered in the UI
+
+    # ── provider selection ───────────────────────────────────────────────
+    def _key(self, name: str) -> str | None:
+        if self.settings is not None:
+            return self.settings.get(name)
+        return os.environ.get(name.upper())
+
+    def active_provider(self) -> str:
+        """Which script writer will actually be used right now."""
+        pref = (self.settings.get("llm_provider") if self.settings else None) \
+            or self.cfg.get("dj.provider", "auto")
+        anthropic_ok = bool(self._key("anthropic_api_key"))
+        openai_ok = bool(self._key("openai_api_key"))
+        if pref == "anthropic":
+            return "anthropic" if anthropic_ok else "template"
+        if pref == "openai":
+            return "openai" if openai_ok else "template"
+        if pref == "template":
+            return "template"
+        # auto: prefer Claude, fall back to OpenAI, then templates
+        return "anthropic" if anthropic_ok else ("openai" if openai_ok else "template")
 
     # ── context gathering ────────────────────────────────────────────────
     def get_weather(self) -> str | None:
@@ -81,43 +103,64 @@ class DJ:
         weather = self.get_weather()
         headlines = self.get_headlines() if include_news else []
 
-        if os.environ.get("ANTHROPIC_API_KEY"):
-            script = self._write_with_claude(just_played, up_next, show, now,
-                                             weather, headlines)
+        provider = self.active_provider()
+        if provider != "template":
+            prompt = self._prompt(just_played, up_next, show, now, weather, headlines)
+            script = (self._write_with_claude(prompt) if provider == "anthropic"
+                      else self._write_with_openai(prompt))
             if script:
                 return script
         return self._write_template(just_played, up_next, show, now, weather, headlines)
 
-    def _write_with_claude(self, just_played, up_next, show, now,
-                           weather, headlines) -> str | None:
+    def _system_prompt(self) -> str:
+        persona = self.cfg.get("dj.persona", "A friendly radio host.")
+        return (
+            f"You are the on-air voice of a real radio station. Persona: {persona}\n"
+            "Write ONLY the words the DJ speaks — no stage directions, no quotes, "
+            "no markdown, no emoji. 3 to 6 short sentences, ~20 seconds of speech. "
+            "Mention the station name once. If headlines are given, read them "
+            "briefly and neutrally like a news minute; if weather is given, work it "
+            "in naturally. Always land on introducing the next track."
+        )
+
+    def _prompt(self, just_played, up_next, show, now, weather, headlines) -> str:
+        station = self.cfg.get("station.name", "the radio")
+        parts = [f"Station: {station}", f"Show: {show.get('name')}",
+                 f"Local time: {now.strftime('%A %H:%M')}"]
+        if just_played:
+            parts.append(f"Just played: {just_played['title']} by {just_played['artist']}")
+        if up_next:
+            parts.append(f"Up next: {up_next['title']} by {up_next['artist']}")
+        if weather:
+            parts.append(f"Weather: {weather}")
+        if headlines:
+            parts.append("Headlines: " + " | ".join(headlines))
+        return "\n".join(parts)
+
+    def _write_with_openai(self, prompt: str) -> str | None:
+        try:
+            from openai import OpenAI
+            client = OpenAI(api_key=self._key("openai_api_key"))
+            response = client.chat.completions.create(
+                model=self.cfg.get("dj.openai.model", "gpt-4o-mini"),
+                max_tokens=int(self.cfg.get("dj.llm.max_tokens", 600)),
+                messages=[{"role": "system", "content": self._system_prompt()},
+                          {"role": "user", "content": prompt}],
+            )
+            return (response.choices[0].message.content or "").strip() or None
+        except Exception as e:
+            log.warning("OpenAI DJ script failed, using template: %s", e)
+            return None
+
+    def _write_with_claude(self, prompt: str) -> str | None:
         try:
             import anthropic
-            client = anthropic.Anthropic()
-            station = self.cfg.get("station.name", "the radio")
-            persona = self.cfg.get("dj.persona", "A friendly radio host.")
-            parts = [f"Station: {station}", f"Show: {show.get('name')}",
-                     f"Local time: {now.strftime('%A %H:%M')}"]
-            if just_played:
-                parts.append(f"Just played: {just_played['title']} by {just_played['artist']}")
-            if up_next:
-                parts.append(f"Up next: {up_next['title']} by {up_next['artist']}")
-            if weather:
-                parts.append(f"Weather: {weather}")
-            if headlines:
-                parts.append("Headlines: " + " | ".join(headlines))
-
+            client = anthropic.Anthropic(api_key=self._key("anthropic_api_key"))
             response = client.messages.create(
                 model=self.cfg.get("dj.llm.model", "claude-opus-5"),
                 max_tokens=int(self.cfg.get("dj.llm.max_tokens", 600)),
-                system=(
-                    f"You are the on-air voice of a real radio station. Persona: {persona}\n"
-                    "Write ONLY the words the DJ speaks — no stage directions, no quotes, "
-                    "no markdown, no emoji. 3 to 6 short sentences, ~20 seconds of speech. "
-                    "Mention the station name once. If headlines are given, read them "
-                    "briefly and neutrally like a news minute; if weather is given, work it "
-                    "in naturally. Always land on introducing the next track."
-                ),
-                messages=[{"role": "user", "content": "\n".join(parts)}],
+                system=self._system_prompt(),
+                messages=[{"role": "user", "content": prompt}],
             )
             if response.stop_reason == "refusal":
                 return None
