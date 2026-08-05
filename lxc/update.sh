@@ -34,7 +34,7 @@ if [ "$OLD_REQ" != "$NEW_REQ" ]; then
 fi
 
 echo "==> Refreshing CLI + services"
-ln -sf /usr/local/bin/tidal-radio /usr/bin/tidal-radio
+bash "$SRC/lxc/install-cli.sh"
 cp "$SRC/lxc/systemd/liquidsoap-radio.service" /etc/systemd/system/
 cp "$SRC/lxc/systemd/tidal-radio.service" /etc/systemd/system/
 systemctl daemon-reload

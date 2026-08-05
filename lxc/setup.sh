@@ -26,16 +26,8 @@ echo "==> Python virtualenv"
 "$VENV/bin/pip" install --upgrade pip wheel >/dev/null
 "$VENV/bin/pip" install -r "$SRC/requirements.txt"
 
-# CLI shim
-cat > /usr/local/bin/tidal-radio <<EOF
-#!/usr/bin/env bash
-set -a; [ -f $ETC/secrets.env ] && . $ETC/secrets.env; set +a
-exec $VENV/bin/python -m app "\$@"
-EOF
-chmod +x /usr/local/bin/tidal-radio
-# /usr/local/bin is not in the PATH that `pct enter` / `lxc-attach` provide,
-# so also expose the CLI from /usr/bin, which always is.
-ln -sf /usr/local/bin/tidal-radio /usr/bin/tidal-radio
+# CLI shim (runs as the radio service user — see install-cli.sh)
+bash "$SRC/lxc/install-cli.sh"
 # make `python -m app` importable from the src dir
 echo "$SRC" > "$($VENV/bin/python -c 'import site;print(site.getsitepackages()[0])')/tidal-radio.pth"
 
@@ -83,6 +75,7 @@ systemctl daemon-reload
 systemctl enable icecast2 liquidsoap-radio tidal-radio >/dev/null
 
 echo "==> Verifying CLI"
+chown -R radio:radio "$DATA"
 /usr/local/bin/tidal-radio --help >/dev/null || {
   echo "ERROR: /usr/local/bin/tidal-radio is not runnable" >&2; exit 1; }
 
