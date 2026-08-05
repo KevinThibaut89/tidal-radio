@@ -40,6 +40,7 @@ class Orchestrator:
         self.forced_show: dict | None = None
         self.running = False
         self.fatal_error: str | None = None
+        self._fetch_failures = 0
 
     # ── public state for the API ─────────────────────────────────────────
     def status(self) -> dict:
@@ -50,6 +51,8 @@ class Orchestrator:
             "tidal_linked": self.tidal.is_linked(),
             "dj_provider": self.dj.active_provider(),
             "quality": self.tidal.quality,
+            "tidal_error": self.tidal.last_error,
+            "throttled_for": round(self.tidal.throttled_for()),
             "library_tracks": self.db.query("SELECT COUNT(*) AS c FROM tracks")[0]["c"],
             "show": {"id": show.get("id"), "name": show.get("name")},
             "now_playing": self._now_playing(),
@@ -132,8 +135,17 @@ class Orchestrator:
 
         path = self.tidal.fetch_track(track["id"])
         if path is None:
-            time.sleep(2)
+            # Don't spin: honour any rate-limit backoff, and escalate our own
+            # wait so a systemic failure can't turn into a request flood.
+            wait = self.tidal.throttled_for()
+            if wait <= 0:
+                self._fetch_failures += 1
+                wait = min(5 * self._fetch_failures, 60)
+            else:
+                log.info("Tidal backoff active — waiting %.0fs", wait)
+            time.sleep(wait)
             return
+        self._fetch_failures = 0
 
         # analyze on demand so sequencing improves as the station runs
         if track.get("bpm") is None:
@@ -237,6 +249,11 @@ class Orchestrator:
     def _analysis_worker(self):
         max_s = int(self.cfg.get("analysis.max_seconds", 120))
         while True:
+            # Never compete with playback for Tidal's rate limit.
+            wait = self.tidal.throttled_for()
+            if wait > 0:
+                time.sleep(wait + 5)
+                continue
             rows = self.db.tracks_without_features(limit=1)
             if not rows:
                 time.sleep(300)

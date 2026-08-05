@@ -32,6 +32,12 @@ class TidalClient:
             wanted = "HIGH"
         self.quality = wanted
         self._apply_quality(wanted)
+        # request pacing — Tidal returns 429 quickly if you retry in a tight loop
+        self._backoff_until = 0.0
+        self._backoff_step = 0
+        self._track_cooldown: dict[int, float] = {}
+        self._last_http_status: int | None = None
+        self.last_error: str | None = None
 
     def _apply_quality(self, name: str) -> None:
         try:
@@ -165,6 +171,63 @@ class TidalClient:
     def is_linked(self) -> bool:
         return self.cfg.session_path.exists()
 
+    # ── diagnostics ──────────────────────────────────────────────────────
+    def diagnose(self, track_id: int | None = None) -> list[tuple[str, str]]:
+        """One request per check — reports what Tidal actually allows.
+
+        Deliberately minimal: a single stream attempt at a single quality, so
+        running it while rate-limited doesn't make things worse.
+        """
+        out: list[tuple[str, str]] = []
+        add = lambda k, v: out.append((k, str(v)))  # noqa: E731
+
+        add("session file", self.cfg.session_path if self.is_linked() else "MISSING")
+        if not self.is_linked():
+            return out
+        add("session restored", "yes" if self._try_restore() else "NO — re-run auth")
+
+        user = getattr(self.session, "user", None)
+        add("user id", getattr(user, "id", "?"))
+        add("country code", getattr(self.session, "country_code", "?"))
+        add("session is PKCE", getattr(self.session, "is_pkce", False))
+        add("configured quality", self.quality)
+
+        try:
+            sub = self.session.request.request(
+                "GET", f"users/{user.id}/subscription").json()
+            add("subscription", sub.get("subscription", {}).get("type", sub))
+            add("sound quality", sub.get("highestSoundQuality", "?"))
+        except Exception as e:
+            add("subscription", f"lookup failed: {e}")
+
+        if track_id is None:
+            row = None
+            try:
+                from .db import Database
+                rows = Database(self.cfg.db_path).query("SELECT id FROM tracks LIMIT 1")
+                row = rows[0]["id"] if rows else None
+            except Exception:
+                pass
+            track_id = row
+        if track_id is None:
+            add("stream test", "skipped — library is empty, run `tidal-radio sync`")
+            return out
+
+        self._last_http_status = None
+        try:
+            urls = self._stream_urls(self.session.track(track_id))
+            add("stream test", f"OK at {self.quality}" if urls
+                else f"FAILED (HTTP {self._last_http_status}) at {self.quality}")
+        except Exception as e:
+            add("stream test", f"FAILED: {e}")
+        if self._last_http_status == 401 and not getattr(self.session, "is_pkce", False):
+            add("hint", "401 with a device-link login — try `tidal-radio auth --pkce`, "
+                        "or check the subscription covers streaming in your region")
+        elif self._last_http_status == 429:
+            add("hint", "429 means Tidal is rate-limiting this account right now; "
+                        "wait a few minutes before retrying")
+        return out
+
     # ── library sync ──────────────────────────────────────────────────────
     def sync_favorites(self, db: Database) -> int:
         favs = self.session.user.favorites
@@ -193,6 +256,31 @@ class TidalClient:
     def cached_path(self, track_id: int) -> Path:
         return self.cfg.cache_dir / f"{track_id}.flac"
 
+    # ── request pacing ───────────────────────────────────────────────────
+    def throttled_for(self) -> float:
+        """Seconds until the next Tidal request is allowed (0 = go ahead)."""
+        return max(0.0, self._backoff_until - time.time())
+
+    def _note_failure(self, track_id: int, status: int | None):
+        """Back off globally on rate limits, cool down the track otherwise."""
+        now = time.time()
+        if status == 429:
+            self._backoff_step = min(self._backoff_step + 1, 6)
+            wait = min(60 * (2 ** (self._backoff_step - 1)), 1800)
+            self._backoff_until = now + wait
+            self.last_error = f"Tidal rate-limited us (429) — pausing {int(wait)}s"
+            log.warning(self.last_error)
+        else:
+            self._track_cooldown[track_id] = now + 900
+            if status == 401:
+                self.last_error = ("Tidal refused playback (401) — the account or "
+                                   "login is not authorised to stream this track")
+
+    def _note_success(self):
+        self._backoff_step = 0
+        self._backoff_until = 0.0
+        self.last_error = None
+
     def fetch_track(self, track_id: int) -> Path | None:
         """Return a local audio file for the track, downloading into the cache
         if needed. Returns None on failure (skip the track)."""
@@ -200,10 +288,15 @@ class TidalClient:
         if out.exists():
             out.touch()  # bump LRU
             return out
+        if self.throttled_for() > 0:
+            return None
+        if self._track_cooldown.get(track_id, 0) > time.time():
+            return None
         self.cfg.cache_dir.mkdir(parents=True, exist_ok=True)
         try:
             urls = self._stream_urls_with_fallback(track_id)
             if not urls:
+                self._note_failure(track_id, self._last_http_status)
                 return None
             with tempfile.NamedTemporaryFile(dir=self.cfg.cache_dir, suffix=".dl",
                                              delete=False) as tmp:
@@ -225,9 +318,11 @@ class TidalClient:
                 out.unlink(missing_ok=True)
                 return None
             self._evict_cache()
+            self._note_success()
             return out
         except Exception as e:
             log.error("Fetch failed for track %s: %s", track_id, e)
+            self._note_failure(track_id, self._http_status(e))
             return None
 
     def _stream_urls_with_fallback(self, track_id: int) -> list[str]:
@@ -241,6 +336,7 @@ class TidalClient:
         for name in self.QUALITY_LADDER[start:]:
             if name != self.quality:
                 self._apply_quality(name)
+            self._last_http_status = None
             urls = self._stream_urls(self.session.track(track_id))
             if urls:
                 if name != self.quality:
@@ -250,8 +346,15 @@ class TidalClient:
                         "for lossless.", name, self.quality)
                     self.quality = name
                 return urls
+            if self._last_http_status == 429:
+                # Walking the ladder now would just burn more requests.
+                break
         self._apply_quality(self.quality)   # restore for the next attempt
         return []
+
+    @staticmethod
+    def _http_status(exc: Exception) -> int | None:
+        return getattr(getattr(exc, "response", None), "status_code", None)
 
     def _stream_urls(self, track) -> list[str]:
         """Get playable URL(s) across tidalapi versions."""
@@ -262,11 +365,12 @@ class TidalClient:
             if isinstance(urls, str):
                 urls = [urls]
             return list(urls)
-        except Exception:
-            pass
+        except Exception as e:
+            self._last_http_status = self._http_status(e) or self._last_http_status
         try:  # legacy API
             return [track.get_url()]
         except Exception as e:
+            self._last_http_status = self._http_status(e) or self._last_http_status
             # Not fatal on its own — the caller may retry at a lower quality.
             log.debug("No stream URL for track %s at %s: %s", track.id, self.quality, e)
             return []

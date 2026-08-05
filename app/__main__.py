@@ -25,6 +25,9 @@ def main():
     p_an.add_argument("--limit", type=int, default=25)
     p_shows = sub.add_parser("shows", help="show tools")
     p_shows.add_argument("action", choices=["generate", "list"])
+    p_diag = sub.add_parser("diagnose",
+                            help="check what Tidal actually allows (one request per check)")
+    p_diag.add_argument("--track-id", type=int, default=None)
     sub.add_parser("run", help="run the station (service entrypoint)")
     sub.add_parser("status", help="print now playing + queue")
 
@@ -35,6 +38,12 @@ def main():
         from .tidal_client import TidalClient
         ok = TidalClient(cfg).login_interactive(pkce=args.pkce)
         sys.exit(0 if ok else 1)
+
+    if args.cmd == "diagnose":
+        from .tidal_client import TidalClient
+        for key, value in TidalClient(cfg).diagnose(args.track_id):
+            print(f"  {key:22} {value}")
+        return
 
     if args.cmd == "sync":
         from .db import Database

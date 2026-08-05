@@ -92,6 +92,22 @@ tidal-radio auth --pkce            # then set quality: LOSSLESS in config.yaml
 systemctl restart tidal-radio
 ```
 
+### When tracks won't play
+
+```bash
+tidal-radio diagnose        # one request per check — safe to run when rate-limited
+```
+
+It reports the session state, your account's country and subscription tier, the
+active quality, and a single stream attempt with the exact HTTP status.
+
+- **401** — Tidal refuses playback for this login. Try `tidal-radio auth --pkce`;
+  if that still fails, the subscription or its region likely doesn't cover
+  streaming for the account (`country code` in the output is the one Tidal uses).
+- **429** — rate limited. The station backs off automatically (60s, doubling up
+  to 30 min) and the analysis worker pauses too. Just wait; don't restart in a
+  loop, which is what earns the limit in the first place.
+
 ### Other hosts
 
 - **LXD/Incus**: `./lxc/create-lxd.sh tidal-radio` (simple non-wizard script).
@@ -130,6 +146,7 @@ sequenced with less precision until the background worker catches up.
 | `tidal-radio shows generate` | Auto-generate thematic shows from your taste |
 | `tidal-radio run` | Run the station (what the systemd service runs) |
 | `tidal-radio status` | Print now-playing + queue |
+| `tidal-radio diagnose` | Check what Tidal allows: session, subscription, region, one stream test |
 
 ## Control UI
 

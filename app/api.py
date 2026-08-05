@@ -151,8 +151,13 @@ async function refresh(){
   const s = await (await fetch('/status')).json();
   const cfg = await (await fetch('/settings')).json();
 
-  $('err').style.display = s.error ? 'block' : 'none';
-  if (s.error) $('err').innerHTML = '<b>Station not playing:</b> ' + s.error;
+  const problem = s.error || s.tidal_error;
+  $('err').style.display = problem ? 'block' : 'none';
+  if (problem) $('err').innerHTML = '<b>' + (s.error ? 'Station not playing:' : 'Tidal:')
+    + '</b> ' + problem
+    + (s.throttled_for ? ' <span class="dim">(retrying in ' + s.throttled_for + 's)</span>' : '')
+    + '<br><span class="dim">Run <code>tidal-radio diagnose</code> in the container '
+    + 'for details.</span>';
 
   const needsSetup = !s.tidal_linked;
   $('setup').style.display = (needsSetup || setupPinned) ? 'block' : 'none';
