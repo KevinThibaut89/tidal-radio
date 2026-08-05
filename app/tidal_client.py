@@ -251,6 +251,7 @@ class TidalClient:
                 db.upsert_track(
                     t.id, t.name, t.artist.name if t.artist else "Unknown",
                     t.album.name if t.album else None, t.duration, favorite=True,
+                    cover_url=self._cover_url(t), source="tidal",
                 )
                 count += 1
             if len(page) < 100:
@@ -258,6 +259,17 @@ class TidalClient:
             offset += len(page)
         log.info("Synced %d favorite tracks", count)
         return count
+
+    @staticmethod
+    def _cover_url(track) -> str | None:
+        """Album art URL, if this tidalapi version exposes one."""
+        album = getattr(track, "album", None)
+        if album is None:
+            return None
+        try:
+            return album.image(320)
+        except Exception:
+            return None
 
     # ── audio cache ───────────────────────────────────────────────────────
     def cached_path(self, track_id: int) -> Path:

@@ -26,7 +26,30 @@ class Config:
                 cfg.generated_shows = (yaml.safe_load(f) or {}).get("shows", [])
         return cfg
 
+    def bind_overrides(self, store) -> None:
+        """Attach the runtime settings store, whose values win over the file.
+
+        Lets the control UI change most settings without touching config.yaml
+        (preserving its comments) and without a restart, since callers read
+        through get() at the point of use.
+        """
+        self._overrides = store
+
     def get(self, dotted: str, default=None):
+        store = getattr(self, "_overrides", None)
+        if store is not None:
+            value = store.config_override(dotted)
+            if value is not None:
+                return value
+        node: Any = self.raw
+        for part in dotted.split("."):
+            if not isinstance(node, dict) or part not in node:
+                return default
+            node = node[part]
+        return node
+
+    def file_value(self, dotted: str, default=None):
+        """The value from config.yaml, ignoring UI overrides."""
         node: Any = self.raw
         for part in dotted.split("."):
             if not isinstance(node, dict) or part not in node:

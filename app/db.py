@@ -42,6 +42,12 @@ class Database:
         self._lock = threading.Lock()
         with self._lock:
             self._conn.executescript(SCHEMA)
+            # additive migrations — safe to run against an existing database
+            for column, decl in (("cover_url", "TEXT"), ("source", "TEXT DEFAULT 'tidal'")):
+                try:
+                    self._conn.execute(f"ALTER TABLE tracks ADD COLUMN {column} {decl}")
+                except sqlite3.OperationalError:
+                    pass          # already present
             self._conn.commit()
 
     def execute(self, sql: str, params=()):
@@ -56,15 +62,20 @@ class Database:
 
     # ── tracks ────────────────────────────────────────────────────────────
     def upsert_track(self, tid: int, title: str, artist: str, album: str | None,
-                     duration: int | None, favorite: bool = True):
+                     duration: int | None, favorite: bool = True,
+                     cover_url: str | None = None, source: str = "tidal"):
         self.execute(
-            """INSERT INTO tracks (id, title, artist, album, duration, favorite, added_at)
-               VALUES (?,?,?,?,?,?,?)
+            """INSERT INTO tracks (id, title, artist, album, duration, favorite,
+                                   added_at, cover_url, source)
+               VALUES (?,?,?,?,?,?,?,?,?)
                ON CONFLICT(id) DO UPDATE SET
                  title=excluded.title, artist=excluded.artist,
                  album=excluded.album, duration=excluded.duration,
-                 favorite=excluded.favorite""",
-            (tid, title, artist, album, duration, int(favorite), time.time()),
+                 favorite=excluded.favorite,
+                 cover_url=COALESCE(excluded.cover_url, tracks.cover_url),
+                 source=excluded.source""",
+            (tid, title, artist, album, duration, int(favorite), time.time(),
+             cover_url, source),
         )
 
     def tracks_without_features(self, limit: int = 50) -> list[sqlite3.Row]:
@@ -100,7 +111,7 @@ class Database:
 
     def recent_plays(self, n: int = 50) -> list[sqlite3.Row]:
         return self.query(
-            """SELECT h.*, t.title, t.artist FROM history h
+            """SELECT h.*, t.title, t.artist, t.album, t.cover_url FROM history h
                JOIN tracks t ON t.id = h.track_id
                ORDER BY h.played_at DESC LIMIT ?""", (n,))
 

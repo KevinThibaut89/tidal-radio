@@ -61,6 +61,26 @@ class SettingsStore:
             tmp.chmod(0o600)                  # secrets live here
             tmp.replace(self.path)
 
+    # ── config overrides (set from the control UI) ───────────────────────
+    def config_override(self, dotted: str):
+        with self._lock:
+            return (self._data.get("config_overrides") or {}).get(dotted)
+
+    def all_config_overrides(self) -> dict:
+        with self._lock:
+            return dict(self._data.get("config_overrides") or {})
+
+    def set_config_overrides(self, values: dict):
+        with self._lock:
+            current = dict(self._data.get("config_overrides") or {})
+            for k, v in values.items():
+                if v is None:
+                    current.pop(k, None)   # None resets to the config.yaml value
+                else:
+                    current[k] = v
+            self._data["config_overrides"] = current
+        self.set_many({})                  # persist through the same atomic write
+
     def public(self) -> dict:
         """Settings safe to show in the UI — secrets reduced to a set/unset flag."""
         with self._lock:

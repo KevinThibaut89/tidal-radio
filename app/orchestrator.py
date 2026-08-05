@@ -28,6 +28,7 @@ class Orchestrator:
         self.tidal = TidalClient(cfg)
         self.engine = Engine(cfg, self.db)
         self.settings = SettingsStore(cfg.data_dir / "settings.json")
+        cfg.bind_overrides(self.settings)   # UI edits win over config.yaml
         self.dj = DJ(cfg, self.settings)
         self.tts = TTS(cfg)
         self.ls = Liquidsoap(cfg.get("liquidsoap.host", "127.0.0.1"),
@@ -47,6 +48,7 @@ class Orchestrator:
         show = current_show(self.cfg, self.forced_show)
         return {
             "station": self.cfg.get("station.name"),
+            "tagline": self.cfg.get("station.tagline"),
             "error": self.fatal_error,
             "tidal_linked": self.tidal.is_linked(),
             "dj_provider": self.dj.active_provider(),
@@ -242,7 +244,8 @@ class Orchestrator:
 
     @staticmethod
     def _item_public(item: dict) -> dict:
-        keys = ("kind", "title", "artist", "album", "bpm", "camelot", "script")
+        keys = ("kind", "title", "artist", "album", "bpm", "camelot", "script",
+                "cover_url", "duration")
         return {k: item.get(k) for k in keys if item.get(k) is not None}
 
     # ── background analysis ──────────────────────────────────────────────

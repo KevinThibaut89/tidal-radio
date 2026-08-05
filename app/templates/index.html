@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#f6f1e7">
+<title>__NAME__</title>
+<style>
+/* ─── Warm editorial: paper, ink, and one terracotta accent ─────────── */
+:root{
+  --paper:#f6f1e7; --paper-raised:#fffdf8; --paper-sunk:#efe8da;
+  --ink:#1c1815; --ink-soft:#4a423a; --ink-faint:#8a7f72;
+  --rule:#e2d9c8; --accent:#a8442a; --accent-soft:#f2e3dc; --on-air:#3f7d54;
+  --shadow:0 1px 2px rgba(28,24,21,.06), 0 8px 24px -12px rgba(28,24,21,.18);
+  --display:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,serif;
+  --text:"Charter","Bitstream Charter","Sitka Text",Cambria,Georgia,serif;
+  --ui:ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  --radius:10px;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --paper:#15110e; --paper-raised:#1e1815; --paper-sunk:#100d0b;
+    --ink:#f3ece0; --ink-soft:#c6bbab; --ink-faint:#8d8073;
+    --rule:#332b24; --accent:#e0734c; --accent-soft:#2c1d16; --on-air:#63b083;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px -14px rgba(0,0,0,.7);
+  }
+}
+:root[data-theme="light"]{
+  --paper:#f6f1e7; --paper-raised:#fffdf8; --paper-sunk:#efe8da;
+  --ink:#1c1815; --ink-soft:#4a423a; --ink-faint:#8a7f72;
+  --rule:#e2d9c8; --accent:#a8442a; --accent-soft:#f2e3dc; --on-air:#3f7d54;
+}
+:root[data-theme="dark"]{
+  --paper:#15110e; --paper-raised:#1e1815; --paper-sunk:#100d0b;
+  --ink:#f3ece0; --ink-soft:#c6bbab; --ink-faint:#8d8073;
+  --rule:#332b24; --accent:#e0734c; --accent-soft:#2c1d16; --on-air:#63b083;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--text);
+  font-size:17px;line-height:1.6;-webkit-font-smoothing:antialiased;
+  font-feature-settings:"kern","liga","onum";}
+.wrap{max-width:680px;margin:0 auto;padding:36px 22px 64px}
+
+/* masthead */
+.masthead{display:flex;align-items:baseline;justify-content:space-between;
+  gap:16px;border-bottom:2px solid var(--ink);padding-bottom:12px}
+.wordmark{font-family:var(--display);font-size:2.1rem;line-height:1.1;
+  letter-spacing:-.015em;margin:0;font-weight:600}
+.tagline{font-style:italic;color:var(--ink-faint);font-size:.95rem;margin:6px 0 0}
+.onair{font-family:var(--ui);font-size:.66rem;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--ink-faint);display:flex;align-items:center;
+  gap:7px;white-space:nowrap}
+.onair b{color:var(--on-air);font-weight:600}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--ink-faint);flex:none}
+.dot.live{background:var(--on-air);animation:pulse 2.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+@media (prefers-reduced-motion:reduce){.dot.live{animation:none}}
+
+/* now playing */
+.hero{display:grid;grid-template-columns:132px 1fr;gap:22px;align-items:start;
+  padding:26px 0 22px;border-bottom:1px solid var(--rule)}
+.art{width:132px;height:132px;border-radius:var(--radius);object-fit:cover;
+  background:var(--paper-sunk);box-shadow:var(--shadow);display:block}
+.art.placeholder{display:flex;align-items:center;justify-content:center;
+  font-size:2.4rem;color:var(--ink-faint)}
+.eyebrow{font-family:var(--ui);font-size:.68rem;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--accent);margin:2px 0 6px;font-weight:600}
+.track{font-family:var(--display);font-size:1.6rem;line-height:1.2;margin:0 0 4px;
+  letter-spacing:-.01em}
+.artist{margin:0;color:var(--ink-soft);font-size:1.05rem}
+.album{margin:2px 0 0;color:var(--ink-faint);font-size:.92rem;font-style:italic}
+.meta{font-family:var(--mono);font-size:.74rem;color:var(--ink-faint);
+  margin-top:12px;display:flex;flex-wrap:wrap;gap:10px}
+.meta span{background:var(--paper-sunk);padding:3px 8px;border-radius:5px}
+@media(max-width:520px){
+  .hero{grid-template-columns:1fr;gap:16px}
+  .art,.art.placeholder{width:100%;height:auto;aspect-ratio:1}
+  .wordmark{font-size:1.7rem}
+}
+
+/* transport */
+audio{width:100%;margin:20px 0 14px;height:38px}
+.controls{display:flex;flex-wrap:wrap;gap:9px}
+button{font-family:var(--ui);font-size:.86rem;background:var(--paper-raised);
+  color:var(--ink);border:1px solid var(--rule);border-radius:99px;
+  padding:8px 16px;cursor:pointer;transition:background .15s,border-color .15s}
+button:hover{border-color:var(--ink-faint);background:var(--paper-sunk)}
+button:active{transform:translateY(1px)}
+button.accent{background:var(--accent);border-color:var(--accent);color:#fff}
+button.accent:hover{filter:brightness(1.08)}
+button:disabled{opacity:.45;cursor:default}
+button.ghost{background:none}
+
+/* sections */
+h2{font-family:var(--ui);font-size:.7rem;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--ink-faint);font-weight:600;margin:34px 0 10px}
+.history{list-style:none;padding:0;margin:0}
+.history li{display:flex;gap:12px;align-items:center;padding:9px 0;
+  border-bottom:1px solid var(--rule)}
+.history li:last-child{border-bottom:none}
+.thumb{width:38px;height:38px;border-radius:5px;object-fit:cover;flex:none;
+  background:var(--paper-sunk)}
+.h-title{font-size:.97rem} .h-artist{color:var(--ink-faint);font-size:.87rem}
+
+/* notices */
+.notice{background:var(--accent-soft);border:1px solid var(--accent);
+  border-radius:var(--radius);padding:13px 16px;margin:18px 0;font-size:.93rem}
+.notice code{font-family:var(--mono);font-size:.85em;background:var(--paper-sunk);
+  padding:1px 5px;border-radius:4px}
+
+/* setup + settings */
+.panel{background:var(--paper-raised);border:1px solid var(--rule);
+  border-radius:var(--radius);padding:20px 22px;margin:20px 0;box-shadow:var(--shadow)}
+.panel h3{font-family:var(--display);font-size:1.2rem;margin:0 0 4px}
+.panel p.hint{color:var(--ink-faint);font-size:.88rem;margin:0 0 14px}
+.step{display:flex;gap:9px;align-items:baseline;font-family:var(--ui);
+  font-size:.95rem;font-weight:600;margin:16px 0 6px}
+.step:first-of-type{margin-top:4px}
+.state{font-weight:400;color:var(--ink-faint);font-size:.86rem}
+.ok{color:var(--on-air)} .warn{color:var(--accent)}
+label{display:block;font-family:var(--ui);font-size:.8rem;color:var(--ink-soft);
+  margin:12px 0 3px;font-weight:500}
+input,select,textarea{width:100%;font-family:var(--ui);font-size:.9rem;
+  background:var(--paper);color:var(--ink);border:1px solid var(--rule);
+  border-radius:7px;padding:8px 10px}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);
+  outline-offset:1px;border-color:transparent}
+textarea{min-height:80px;font-family:var(--text);line-height:1.5;resize:vertical}
+input[type=range]{padding:0;accent-color:var(--accent)}
+input[type=checkbox]{width:auto;accent-color:var(--accent);transform:scale(1.15)}
+.field{margin-bottom:4px}
+.field .row{display:flex;align-items:center;gap:12px}
+.field .row input[type=range]{flex:1}
+.val{font-family:var(--mono);font-size:.8rem;color:var(--ink-faint);
+  min-width:3.2em;text-align:right}
+.help{font-size:.79rem;color:var(--ink-faint);margin:3px 0 0}
+.group{border-top:1px solid var(--rule);padding-top:14px;margin-top:18px}
+.group:first-of-type{border-top:none;margin-top:6px;padding-top:0}
+.group h4{font-family:var(--ui);font-size:.72rem;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--ink-faint);margin:0 0 6px}
+.saved{font-family:var(--ui);font-size:.8rem;color:var(--on-air);margin-left:8px}
+.footer{margin-top:40px;padding-top:16px;border-top:1px solid var(--rule);
+  font-family:var(--ui);font-size:.78rem;color:var(--ink-faint);
+  display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.footer a{color:var(--ink-faint)}
+.hidden{display:none !important}
+</style></head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <div>
+      <h1 class="wordmark">__NAME__</h1>
+      <p class="tagline" id="tagline"></p>
+    </div>
+    <div class="onair"><span class="dot" id="dot"></span><span id="onair-text">connecting</span></div>
+  </header>
+
+  <div class="notice hidden" id="notice"></div>
+
+  <section class="hero">
+    <img class="art" id="art" alt="" hidden>
+    <div class="art placeholder" id="art-ph">♪</div>
+    <div>
+      <p class="eyebrow" id="eyebrow">Now playing</p>
+      <h2 class="track" id="track" style="font-family:var(--display);font-size:1.6rem;
+        text-transform:none;letter-spacing:-.01em;color:var(--ink);margin:0 0 4px">…</h2>
+      <p class="artist" id="artist"></p>
+      <p class="album" id="album"></p>
+      <div class="meta" id="meta"></div>
+    </div>
+  </section>
+
+  <audio controls id="stream"></audio>
+  <div class="controls">
+    <button class="accent" onclick="post('/skip')">Skip track</button>
+    <button onclick="post('/break')">DJ break</button>
+    <button class="ghost" onclick="togglePanel('setup')">Setup</button>
+    <button class="ghost" onclick="togglePanel('settings')">Settings</button>
+    <button class="ghost" onclick="cycleTheme()" id="theme-btn" title="Theme">Theme</button>
+  </div>
+
+  <!-- ─── setup ─── -->
+  <div class="panel hidden" id="setup">
+    <h3>Setup</h3>
+    <p class="hint">Connect your music account and, if you'd like a talking DJ, an AI key.</p>
+
+    <div class="step"><span id="t-icon">○</span> Music account
+      <span class="state" id="t-state"></span></div>
+    <div>
+      <button class="accent" id="btn-link" onclick="startLink()">Link Tidal account</button>
+      <button id="btn-sync" onclick="syncNow()">Sync library</button>
+    </div>
+    <div id="t-link" class="hidden">
+      <p class="help">Open this link, approve, then come back — this page updates itself.</p>
+      <p><a id="t-url" target="_blank" rel="noopener"></a></p>
+    </div>
+
+    <div class="step"><span id="k-icon">○</span> AI DJ
+      <span class="state" id="k-state"></span></div>
+    <p class="help">Optional — without a key the DJ reads from built-in scripts.
+      Keys are stored on this container only.</p>
+    <label for="anthropic_api_key">Anthropic API key</label>
+    <input type="password" id="anthropic_api_key" placeholder="sk-ant-…" autocomplete="off">
+    <label for="openai_api_key">OpenAI API key</label>
+    <input type="password" id="openai_api_key" placeholder="sk-…" autocomplete="off">
+    <div style="margin-top:14px">
+      <button class="accent" onclick="saveKeys()">Save keys</button>
+      <span class="saved hidden" id="keys-saved">Saved</span>
+    </div>
+  </div>
+
+  <!-- ─── settings ─── -->
+  <div class="panel hidden" id="settings">
+    <h3>Settings</h3>
+    <p class="hint">Changes apply immediately unless marked otherwise.</p>
+    <div id="settings-body"></div>
+  </div>
+
+  <h2>Recently played</h2>
+  <ul class="history" id="history"></ul>
+
+  <div class="footer">
+    <span id="foot-left"></span>
+    <span id="foot-right"></span>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g,
+  c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let linkPolling = false, settingsBuilt = false, lastArt = null;
+
+$('stream').src = location.protocol + '//' + location.hostname + ':8000/radio.mp3';
+
+const post = (path, body) => fetch(path, {
+  method: 'POST',
+  headers: body ? {'Content-Type': 'application/json'} : undefined,
+  body: body ? JSON.stringify(body) : undefined,
+});
+const patch = (path, body) => fetch(path, {
+  method: 'PATCH', headers: {'Content-Type': 'application/json'},
+  body: JSON.stringify(body),
+});
+
+/* theme: auto → light → dark */
+function cycleTheme(){
+  const order = ['auto', 'light', 'dark'];
+  const now = localStorage.getItem('theme') || 'auto';
+  const next = order[(order.indexOf(now) + 1) % 3];
+  localStorage.setItem('theme', next);
+  applyTheme();
+}
+function applyTheme(){
+  const t = localStorage.getItem('theme') || 'auto';
+  if (t === 'auto') document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme', t);
+  $('theme-btn').textContent = t === 'auto' ? 'Theme: auto'
+    : (t === 'light' ? 'Theme: day' : 'Theme: night');
+}
+applyTheme();
+
+function togglePanel(id){ $(id).classList.toggle('hidden');
+  if (id === 'settings') buildSettings(); }
+
+/* ── linking ── */
+async function startLink(){
+  $('btn-link').disabled = true;
+  const r = await post('/tidal/link');
+  if (!r.ok){ $('t-state').textContent = 'could not start linking'; $('btn-link').disabled = false; return; }
+  const d = await r.json();
+  $('t-url').href = d.url; $('t-url').textContent = d.url;
+  $('t-link').classList.remove('hidden');
+  $('t-state').innerHTML = '<span class="warn">waiting for approval…</span>';
+  if (!linkPolling){ linkPolling = true; pollLink(); }
+}
+async function pollLink(){
+  const d = await (await fetch('/tidal/status')).json();
+  if (d.linked || d.status === 'linked'){
+    linkPolling = false;
+    $('t-link').classList.add('hidden');
+    $('t-state').innerHTML = '<span class="ok">linked — syncing your library…</span>';
+    await post('/tidal/sync'); refresh(); return;
+  }
+  if (d.status === 'failed'){
+    linkPolling = false;
+    $('t-state').innerHTML = '<span class="warn">failed: ' + esc(d.error || '') + '</span>';
+    $('btn-link').disabled = false; return;
+  }
+  setTimeout(pollLink, 3000);
+}
+async function syncNow(){
+  $('btn-sync').disabled = true; $('btn-sync').textContent = 'Syncing…';
+  await post('/tidal/sync');
+  setTimeout(() => { $('btn-sync').disabled = false; $('btn-sync').textContent = 'Sync library'; }, 8000);
+}
+async function saveKeys(){
+  const body = {};
+  for (const k of ['anthropic_api_key','openai_api_key'])
+    if ($(k).value.trim()) body[k] = $(k).value.trim();
+  if (Object.keys(body).length){
+    await post('/settings', body);
+    $('anthropic_api_key').value = ''; $('openai_api_key').value = '';
+    $('keys-saved').classList.remove('hidden');
+    setTimeout(() => $('keys-saved').classList.add('hidden'), 2500);
+  }
+  refresh();
+}
+
+/* ── settings, rendered from the schema the server publishes ── */
+async function buildSettings(){
+  if (settingsBuilt) return;
+  const cfg = await (await fetch('/config')).json();
+  const body = $('settings-body');
+  body.innerHTML = cfg.groups.map(g => `
+    <div class="group">
+      <h4>${esc(g.icon || '')} ${esc(g.group)}</h4>
+      ${g.settings.map(s => field(s)).join('')}
+    </div>`).join('');
+  body.querySelectorAll('[data-key]').forEach(el => {
+    const evt = el.type === 'range' ? 'change' : (el.tagName === 'SELECT' ? 'change' : 'blur');
+    el.addEventListener(evt, () => saveField(el));
+    if (el.type === 'range')
+      el.addEventListener('input', () => {
+        const out = el.parentElement.querySelector('.val');
+        if (out) out.textContent = el.value;
+      });
+    if (el.type === 'checkbox') el.addEventListener('change', () => saveField(el));
+  });
+  settingsBuilt = true;
+}
+function field(s){
+  const id = 'set-' + s.key.replace(/\./g, '-');
+  const v = s.value == null ? '' : s.value;
+  const help = s.help ? `<p class="help">${esc(s.help)}</p>` : '';
+  const live = s.live === false ? ' <span class="help">(restart required)</span>' : '';
+  let control;
+  if (s.control === 'toggle'){
+    control = `<div class="row"><input type="checkbox" id="${id}" data-key="${s.key}"
+        ${v ? 'checked' : ''}></div>`;
+  } else if (s.control === 'slider'){
+    control = `<div class="row">
+        <input type="range" id="${id}" data-key="${s.key}" min="${s.min}" max="${s.max}"
+               step="${s.step}" value="${esc(v)}">
+        <span class="val">${esc(v)}</span></div>`;
+  } else if (s.control === 'number'){
+    control = `<input type="number" id="${id}" data-key="${s.key}" min="${s.min ?? ''}"
+        max="${s.max ?? ''}" step="${s.step ?? 1}" value="${esc(v)}">`;
+  } else if (s.control === 'select'){
+    const opts = (s.options || []).map(o =>
+      `<option value="${esc(o.value)}"${String(o.value) === String(v) ? ' selected' : ''}>
+         ${esc(o.label)}</option>`).join('');
+    // only offer a "custom" row for a real value the option list doesn't cover
+    const custom = s.allow_custom && v !== ''
+        && !(s.options || []).some(o => String(o.value) === String(v))
+      ? `<option value="${esc(v)}" selected>${esc(v)} (custom)</option>` : '';
+    control = `<select id="${id}" data-key="${s.key}">${opts}${custom}</select>`;
+  } else if (s.control === 'textarea'){
+    control = `<textarea id="${id}" data-key="${s.key}">${esc(v)}</textarea>`;
+  } else if (s.control === 'list'){
+    control = `<textarea id="${id}" data-key="${s.key}"
+        >${esc(Array.isArray(v) ? v.join('\n') : v)}</textarea>`;
+  } else {
+    control = `<input type="text" id="${id}" data-key="${s.key}" value="${esc(v)}">`;
+  }
+  return `<div class="field"><label for="${id}">${esc(s.label)}${live}</label>${control}${help}</div>`;
+}
+async function saveField(el){
+  const key = el.dataset.key;
+  const value = el.type === 'checkbox' ? el.checked : el.value;
+  const r = await patch('/config', {[key]: value});
+  const label = el.closest('.field').querySelector('label');
+  if (!r.ok){
+    const err = await r.json().catch(() => ({}));
+    label.insertAdjacentHTML('beforeend',
+      ` <span class="warn help">${esc(err.detail || 'rejected')}</span>`);
+    setTimeout(() => label.querySelector('.warn')?.remove(), 4000);
+    return;
+  }
+  label.insertAdjacentHTML('beforeend', ' <span class="saved">saved</span>');
+  setTimeout(() => label.querySelector('.saved')?.remove(), 1600);
+}
+
+/* ── live status ── */
+async function refresh(){
+  let s, cfg;
+  try {
+    s = await (await fetch('/status')).json();
+    cfg = await (await fetch('/settings')).json();
+  } catch { return; }
+
+  $('tagline').textContent = s.tagline || '';
+  const live = !!s.now_playing && !s.error;
+  $('dot').className = 'dot' + (live ? ' live' : '');
+  $('onair-text').innerHTML = live ? '<b>On air</b>' : (s.error ? 'off air' : 'standby');
+
+  const problem = s.error || s.tidal_error;
+  $('notice').classList.toggle('hidden', !problem);
+  if (problem) $('notice').innerHTML = '<b>' + (s.error ? 'Not playing: ' : 'Tidal: ')
+    + '</b>' + esc(problem)
+    + (s.throttled_for ? ` <span class="help">retrying in ${s.throttled_for}s</span>` : '')
+    + '<p class="help" style="margin:6px 0 0">Run <code>tidal-radio diagnose</code> in the container for detail.</p>';
+
+  const np = s.now_playing;
+  const isBreak = np && np.kind === 'break';
+  $('eyebrow').textContent = isBreak ? 'Station break'
+    : (np ? 'Now playing' : (s.tidal_linked ? 'Warming up' : 'Not set up yet'));
+  $('track').textContent = np ? (isBreak ? 'Your host' : np.title) : '—';
+  $('artist').textContent = np && !isBreak ? np.artist : '';
+  $('album').textContent = np && np.album && !isBreak ? np.album : '';
+
+  const art = np && np.cover_url;
+  if (art !== lastArt){
+    lastArt = art;
+    if (art){ $('art').src = art; $('art').hidden = false; $('art-ph').classList.add('hidden'); }
+    else { $('art').hidden = true; $('art-ph').classList.remove('hidden');
+           $('art-ph').textContent = isBreak ? '🎙' : '♪'; }
+  }
+  const bits = [];
+  if (np && np.bpm) bits.push(Math.round(np.bpm) + ' BPM');
+  if (np && np.camelot) bits.push('Key ' + np.camelot);
+  if (s.show && s.show.name) bits.push(s.show.name);
+  if (s.quality) bits.push(s.quality);
+  $('meta').innerHTML = bits.map(b => `<span>${esc(b)}</span>`).join('');
+
+  $('history').innerHTML = (s.recent || []).map(r => `
+    <li>${r.cover_url ? `<img class="thumb" src="${esc(r.cover_url)}" alt="">`
+                      : '<div class="thumb"></div>'}
+      <div><div class="h-title">${esc(r.title)}</div>
+           <div class="h-artist">${esc(r.artist)}</div></div></li>`).join('')
+    || '<li class="h-artist">Nothing played yet.</li>';
+
+  /* setup card auto-opens until the station can actually play */
+  if (!s.tidal_linked) $('setup').classList.remove('hidden');
+  $('t-icon').textContent = s.tidal_linked ? '●' : '○';
+  if (!linkPolling)
+    $('t-state').textContent = s.tidal_linked
+      ? `${s.library_tracks || 0} tracks in your library` : 'not linked yet';
+  $('btn-link').textContent = s.tidal_linked ? 'Re-link account' : 'Link Tidal account';
+  $('btn-link').disabled = false;
+  $('btn-sync').classList.toggle('hidden', !s.tidal_linked);
+
+  const hasKey = cfg.anthropic_api_key_set || cfg.openai_api_key_set;
+  $('k-icon').textContent = hasKey ? '●' : '○';
+  $('k-state').textContent = 'writing with ' + (s.dj_provider || 'templates');
+  for (const k of ['anthropic_api_key','openai_api_key'])
+    $(k).placeholder = cfg[k + '_set']
+      ? (cfg[k + '_from_env'] ? 'set via secrets.env' : 'saved — type to replace')
+      : (k.startsWith('anthropic') ? 'sk-ant-…' : 'sk-…');
+
+  $('foot-left').textContent = `${s.library_tracks || 0} tracks · cache ${s.cache_gb || 0} GB`;
+  $('foot-right').textContent = s.liquidsoap ? 'audio pipeline up' : 'audio pipeline down';
+}
+refresh(); setInterval(refresh, 10000);
+</script>
+</body></html>
