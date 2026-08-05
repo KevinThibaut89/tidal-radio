@@ -31,23 +31,67 @@ class TidalClient:
 
     # ── auth ──────────────────────────────────────────────────────────────
     def login_interactive(self) -> bool:
-        """Device-link login; prints the link.tidal.com URL. Persists session."""
-        self.cfg.session_path.parent.mkdir(parents=True, exist_ok=True)
-        ok = self.session.login_session_file(self.cfg.session_path, do_pkce=False)
-        if ok:
+        """Device-link login; prints the link.tidal.com URL. Persists session.
+
+        A stale session file must never block re-linking: tidalapi raises
+        AuthenticationError from the token refresh while *loading* it, so the
+        load is attempted defensively and a dead session is moved aside before
+        starting a fresh device-link login.
+        """
+        path = self.cfg.session_path
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        if path.exists():
+            if self._try_restore():
+                log.info("Existing Tidal session is still valid")
+                return True
+            backup = path.with_name(path.name + ".bak")
+            log.warning("Existing session unusable — moving it to %s", backup.name)
+            try:
+                path.replace(backup)
+            except OSError:
+                path.unlink(missing_ok=True)
+            self.session = tidalapi.Session()  # discard the poisoned state
+
+        self.session.login_oauth_simple(fn_print=print)  # prints link, blocks
+        if self._checked_login():
+            self.session.save_session_to_file(path)
             user = getattr(self.session, "user", None)
             log.info("Tidal linked (user id %s)", getattr(user, "id", "?"))
-        return bool(ok)
+            return True
+        log.error("Tidal login did not complete")
+        return False
 
     def ensure_login(self) -> bool:
-        """Non-interactive: restore the persisted session, refreshing if needed."""
+        """Non-interactive: restore the persisted session. Never prompts —
+        this runs inside the service, where an interactive login would hang."""
         if not self.cfg.session_path.exists():
             log.error("No Tidal session found — run `tidal-radio auth` first")
             return False
+        if not self._try_restore():
+            log.error("Tidal session is not valid — re-run `tidal-radio auth`")
+            return False
+        # persist any tokens refreshed during the restore
         try:
-            return bool(self.session.login_session_file(self.cfg.session_path))
-        except Exception as e:  # expired refresh token etc.
-            log.error("Tidal session restore failed: %s — re-run `tidal-radio auth`", e)
+            self.session.save_session_to_file(self.cfg.session_path)
+        except Exception:
+            pass
+        return True
+
+    def _try_restore(self) -> bool:
+        """Load the session file and confirm it works. False on any failure."""
+        try:
+            self.session.load_session_from_file(self.cfg.session_path)
+        except Exception as e:  # expired refresh token, revoked access, …
+            log.warning("Tidal session restore failed: %s", e)
+            return False
+        return self._checked_login()
+
+    def _checked_login(self) -> bool:
+        try:
+            return bool(self.session.check_login())
+        except Exception as e:
+            log.warning("Tidal login check failed: %s", e)
             return False
 
     # ── library sync ──────────────────────────────────────────────────────
