@@ -1,8 +1,11 @@
 """Control API + mini web player."""
+from typing import TYPE_CHECKING
+
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 
-from .orchestrator import Orchestrator
+if TYPE_CHECKING:  # avoid pulling the analysis stack in just for a type hint
+    from .orchestrator import Orchestrator
 
 PLAYER_HTML = """<!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -15,8 +18,12 @@ PLAYER_HTML = """<!doctype html>
         padding:8px 16px;margin-right:8px;cursor:pointer}}
  audio{{width:100%;margin:16px 0}}
  li{{margin:4px 0}}
+ .err{{background:#3a1414;border:1px solid #7a2b2b;border-radius:8px;
+      padding:10px 14px;margin:12px 0;display:none}}
+ code{{background:#222;padding:2px 6px;border-radius:4px}}
 </style></head><body>
 <h1>📻 {name}</h1>
+<div class="err" id="err"></div>
 <audio controls id="stream"></audio>
 <div class="np" id="np">…</div>
 <div><button onclick="fetch('/skip',{{method:'POST'}})">⏭ Skip</button>
@@ -27,6 +34,13 @@ document.getElementById('stream').src =
   location.protocol + '//' + location.hostname + ':8000/radio.mp3';
 async function tick(){{
   const s = await (await fetch('/status')).json();
+  const eb = document.getElementById('err');
+  if (s.error) {{
+    eb.style.display = 'block';
+    eb.innerHTML = `<b>Station not playing:</b> ${{s.error}}`
+      + (s.tidal_linked ? '' : '<br>Run <code>tidal-radio auth</code> then '
+                              + '<code>tidal-radio sync</code> in the container.');
+  }} else {{ eb.style.display = 'none'; }}
   const np = s.now_playing;
   document.getElementById('np').innerHTML = np
     ? (np.kind==='break' ? '🎙 <i>DJ break</i>'
@@ -42,7 +56,7 @@ tick(); setInterval(tick, 10000);
 </script></body></html>"""
 
 
-def create_app(orch: Orchestrator) -> FastAPI:
+def create_app(orch: "Orchestrator") -> FastAPI:
     app = FastAPI(title="tidal-radio", docs_url=None, redoc_url=None)
 
     @app.get("/", response_class=HTMLResponse)

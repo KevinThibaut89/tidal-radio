@@ -105,7 +105,21 @@ def main():
             daemon=True, name="api",
         )
         api_thread.start()
-        orch.run()
+
+        # Keep the control UI reachable even when the brain can't run (e.g.
+        # Tidal not linked yet) — it's where the problem gets reported. Retry
+        # so the station self-heals once the cause is fixed.
+        import time
+        while True:
+            try:
+                orch.fatal_error = None
+                orch.run()
+            except Exception as e:
+                orch.fatal_error = str(e)
+                log.error("Station stopped: %s — retrying in 30s "
+                          "(control UI stays up at :%s)", e,
+                          cfg.get("api.port", 8080))
+                time.sleep(30)
 
 
 if __name__ == "__main__":

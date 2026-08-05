@@ -37,12 +37,15 @@ class Orchestrator:
         self.break_requested = False
         self.forced_show: dict | None = None
         self.running = False
+        self.fatal_error: str | None = None
 
     # ── public state for the API ─────────────────────────────────────────
     def status(self) -> dict:
         show = current_show(self.cfg, self.forced_show)
         return {
             "station": self.cfg.get("station.name"),
+            "error": self.fatal_error,
+            "tidal_linked": self.cfg.session_path.exists(),
             "show": {"id": show.get("id"), "name": show.get("name")},
             "now_playing": self._now_playing(),
             "queue": [self._item_public(i) for i in self.pushed
@@ -71,7 +74,7 @@ class Orchestrator:
     # ── main loop ────────────────────────────────────────────────────────
     def run(self):
         if not self.tidal.ensure_login():
-            raise SystemExit("Tidal login required — run `tidal-radio auth`")
+            raise RuntimeError("Tidal not linked — run `tidal-radio auth` in the container")
         if not self.db.query("SELECT 1 FROM tracks LIMIT 1"):
             log.info("Library empty — running initial sync")
             self.tidal.sync_favorites(self.db)
