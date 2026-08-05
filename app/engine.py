@@ -41,11 +41,17 @@ class Engine:
                 continue
             pool.append(c)
 
-        if not pool:  # constraints too tight — relax to anything not just played
-            pool = [c for c in candidates
-                    if not (self.db.last_played_at(c["id"]) or 0) > now - 3600]
         if not pool:
-            pool = candidates
+            # Constraints can't be met — usually a small library. Relax to the
+            # least-recently-played half rather than anything at all, so a tiny
+            # library still rotates instead of repeating the same few tracks.
+            ordered = sorted(candidates, key=lambda c: self.db.last_played_at(c["id"]) or 0)
+            pool = ordered[: max(1, len(ordered) // 2)]
+            if len(candidates) < 25:
+                log.warning(
+                    "Only %d tracks available — the station will repeat. "
+                    "Run `tidal-radio sync` to import playlists and albums.",
+                    len(candidates))
 
         scored = [(self._score(c, show), c) for c in pool]
         scored.sort(key=lambda x: x[0], reverse=True)

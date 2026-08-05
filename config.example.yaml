@@ -8,11 +8,18 @@ station:
 paths:
   data: /var/lib/tidal-radio          # db, session, cache, breaks, voices
 
+source:
+  provider: tidal                     # tidal | spotify (restart to switch)
+
 tidal:
   # HIGH works with the standard device-link login. LOSSLESS / HI_RES_LOSSLESS
   # additionally require linking with `tidal-radio auth --pkce`; otherwise the
   # station falls back automatically and logs the downgrade.
   quality: HIGH                       # LOW | HIGH | LOSSLESS | HI_RES_LOSSLESS
+
+sync:
+  playlists: true                     # import tracks from your playlists
+  albums: true                        # ...and from favourited albums
 
 cache:
   max_gb: 6                           # audio cache size; least-recently-played evicted

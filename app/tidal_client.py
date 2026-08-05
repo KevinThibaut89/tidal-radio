@@ -237,28 +237,92 @@ class TidalClient:
 
     # ── library sync ──────────────────────────────────────────────────────
     def sync_favorites(self, db: Database) -> int:
+        """Import everything playable we can reach: favourited tracks, plus the
+        tracks inside favourited albums and the user's playlists.
+
+        Favourited *tracks* alone are a poor library — most people organise by
+        playlist or album, and a handful of tracks makes the station loop.
+        """
+        seen: set[int] = set()
+
+        def store(tracks, favorite: bool) -> None:
+            for t in tracks or []:
+                tid = getattr(t, "id", None)
+                if tid is None or tid in seen:
+                    continue
+                seen.add(tid)
+                db.upsert_track(
+                    tid, t.name, t.artist.name if getattr(t, "artist", None) else "Unknown",
+                    t.album.name if getattr(t, "album", None) else None,
+                    getattr(t, "duration", None), favorite=favorite,
+                    cover_url=self._cover_url(t), source="tidal",
+                )
+
         favs = self.session.user.favorites
-        count = 0
+        store(self._paged(favs.tracks), favorite=True)
+        log.info("Synced %d favourite tracks", len(seen))
+
+        if self.cfg.get("sync.albums", True):
+            before = len(seen)
+            for album in self._paged(favs.albums):
+                try:
+                    store(album.tracks(), favorite=False)
+                except Exception as e:
+                    log.debug("Album %s unreadable: %s", getattr(album, "name", "?"), e)
+            log.info("Added %d tracks from favourite albums", len(seen) - before)
+
+        if self.cfg.get("sync.playlists", True):
+            before = len(seen)
+            for pl in self._playlists():
+                try:
+                    store(self._paged(pl.tracks), favorite=False)
+                except Exception as e:
+                    log.debug("Playlist %s unreadable: %s", getattr(pl, "name", "?"), e)
+            log.info("Added %d tracks from playlists", len(seen) - before)
+
+        log.info("Library sync finished: %d unique tracks", len(seen))
+        return len(seen)
+
+    def _playlists(self) -> list:
+        """User playlists across tidalapi versions (own + followed)."""
+        out = []
+        for getter in ("playlists", "playlist_and_favorite_playlists"):
+            fn = getattr(self.session.user, getter, None)
+            if fn is None:
+                continue
+            try:
+                items = fn()
+                # some versions return (playlist, kind) tuples
+                out.extend(i[0] if isinstance(i, tuple) else i for i in items or [])
+                break
+            except Exception as e:
+                log.debug("Playlist listing via %s failed: %s", getter, e)
+        try:
+            out.extend(self._paged(self.session.user.favorites.playlists))
+        except Exception:
+            pass
+        return out
+
+    @staticmethod
+    def _paged(fn, page_size: int = 100) -> list:
+        """Drain a paginated tidalapi listing; tolerate versions without kwargs."""
+        items: list = []
         offset = 0
         while True:
             try:
-                page = favs.tracks(limit=100, offset=offset)
-            except TypeError:  # older tidalapi without pagination kwargs
-                page = favs.tracks()
+                page = fn(limit=page_size, offset=offset)
+            except TypeError:
+                return list(fn() or [])
+            except Exception as e:
+                log.debug("Paged listing failed at offset %d: %s", offset, e)
+                break
             if not page:
                 break
-            for t in page:
-                db.upsert_track(
-                    t.id, t.name, t.artist.name if t.artist else "Unknown",
-                    t.album.name if t.album else None, t.duration, favorite=True,
-                    cover_url=self._cover_url(t), source="tidal",
-                )
-                count += 1
-            if len(page) < 100:
+            items.extend(page)
+            if len(page) < page_size:
                 break
             offset += len(page)
-        log.info("Synced %d favorite tracks", count)
-        return count
+        return items
 
     @staticmethod
     def _cover_url(track) -> str | None:

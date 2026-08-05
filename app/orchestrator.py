@@ -25,10 +25,13 @@ class Orchestrator:
     def __init__(self, cfg: Config):
         self.cfg = cfg
         self.db = Database(cfg.db_path)
-        self.tidal = TidalClient(cfg)
         self.engine = Engine(cfg, self.db)
         self.settings = SettingsStore(cfg.data_dir / "settings.json")
         cfg.bind_overrides(self.settings)   # UI edits win over config.yaml
+        self.source = self._build_source()
+        # `tidal` stays as an alias so existing call sites and the API keep working
+        # while only one source is active at a time.
+        self.tidal = self.source
         self.dj = DJ(cfg, self.settings)
         self.tts = TTS(cfg)
         self.ls = Liquidsoap(cfg.get("liquidsoap.host", "127.0.0.1"),
@@ -43,6 +46,28 @@ class Orchestrator:
         self.fatal_error: str | None = None
         self._fetch_failures = 0
 
+    def _build_source(self):
+        """Instantiate the configured music source.
+
+        Selection is read once at startup — switching sources is marked
+        restart-required in the settings schema, because the library, cache and
+        any in-flight session all belong to one service.
+        """
+        provider = str(self.cfg.get("source.provider", "tidal")).lower()
+        if provider == "spotify":
+            try:
+                from .spotify_client import SpotifyClient
+                log.info("Music source: Spotify")
+                return SpotifyClient(self.cfg)
+            except Exception:
+                log.exception("Spotify source unavailable — falling back to Tidal")
+        log.info("Music source: Tidal")
+        return TidalClient(self.cfg)
+
+    @property
+    def source_name(self) -> str:
+        return getattr(self.source, "name", "tidal")
+
     # ── public state for the API ─────────────────────────────────────────
     def status(self) -> dict:
         show = current_show(self.cfg, self.forced_show)
@@ -50,7 +75,8 @@ class Orchestrator:
             "station": self.cfg.get("station.name"),
             "tagline": self.cfg.get("station.tagline"),
             "error": self.fatal_error,
-            "tidal_linked": self.tidal.is_linked(),
+            "source": self.source_name,
+            "tidal_linked": self.source.is_linked(),   # "source is linked"; name kept for the UI
             "dj_provider": self.dj.active_provider(),
             "quality": self.tidal.quality,
             "tidal_error": self.tidal.last_error,
