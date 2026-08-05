@@ -81,6 +81,16 @@ If you skipped the Tidal step, finish later inside the container
   run `bash /opt/tidal-radio/src/lxc/setup.sh`, then `tidal-radio auth`,
   `tidal-radio sync`, and start the three services.
 
+### Updating an existing container
+
+```bash
+pct exec <CTID> -- bash /opt/tidal-radio/src/lxc/update.sh
+```
+
+Pulls the latest published code, reinstalls dependencies only if they changed,
+and restarts the services. Your config, secrets, Tidal session, database and
+audio cache live outside the code directory and are left untouched.
+
 ### Useful afterwards
 
 ```bash
@@ -158,6 +168,3 @@ between tracks with a crossfade.
   and that `tidal-radio auth` has been completed.
 - Analysis is CPU-heavy (librosa). Give the container 2+ cores or lower
   `analysis.max_seconds` in config.
-
-> Developed as part of the private kevinTool repo; this public repo is the
-> deployable mirror used by the installer one-liner.
